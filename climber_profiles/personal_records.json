@@ -1,0 +1,12 @@
+{
+    "Eric": {
+        "longest_climb_sec": 59.95,
+        "highest_impact_g": 4.75,
+        "max_average_strain_g": 1.02,
+        "Indoor": {
+            "longest_climb_sec": 59.95,
+            "highest_impact_g": 4.75,
+            "max_average_strain_g": 1.02
+        }
+    }
+}
