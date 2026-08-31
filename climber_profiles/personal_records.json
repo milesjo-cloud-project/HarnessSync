@@ -1,12 +1,14 @@
 {
-    "Eric": {
-        "longest_climb_sec": 59.95,
-        "highest_impact_g": 4.75,
-        "max_average_strain_g": 1.02,
-        "Indoor": {
-            "longest_climb_sec": 59.95,
-            "highest_impact_g": 4.75,
-            "max_average_strain_g": 1.02
-        }
+    "Guest": {
+        "climbs": [
+            {
+                "date": "2026-08-31",
+                "discipline": "Boulder",
+                "grade": "V0",
+                "status": "Flash",
+                "route_name": "",
+                "location": "The rock gym"
+            }
+        ]
     }
 }
