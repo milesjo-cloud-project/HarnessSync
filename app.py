@@ -1,14 +1,16 @@
-from datetime import date
+from datetime import date, datetime
 
 import streamlit as st
 import pandas as pd
 import altair as alt
 
 from grades import GRADES_BY_DISCIPLINE, SEND_STATUSES, grade_rank
-from profile_manager import log_climb, get_climbs, load_all_records
+from profile_manager import log_climb, get_climbs, load_all_records, log_session, get_sessions
+from feedback_manager import submit_feedback, load_feedback
 from user_guide import render_hardware_manual_tab
 from leaderboard_engine import compile_leaderboard
 import ai_coach
+import notifications
 
 st.set_page_config(page_title="HarnessSync | Climbing Intel", layout="wide")
 
@@ -66,12 +68,54 @@ if submitted:
         except Exception as exc:
             st.session_state.last_coach_feedback = f"⚠️ Coach feedback failed: {exc}"
 
+# ----------------- SESSION TIMER -----------------
+# Tracks a whole gym/crag visit (not an individual climb) - "Start" when you
+# walk in, "End" when you're leaving. Kept in session_state, so it's scoped
+# to this one browser tab/visitor, same as every other widget here.
+st.sidebar.markdown("---")
+st.sidebar.header("⏱️ Session Timer")
+
+if "session_start" not in st.session_state:
+    st.session_state.session_start = None
+    st.session_state.session_climber = None
+
+if st.session_state.session_start is None:
+    if st.sidebar.button("▶️ Start Session", use_container_width=True):
+        st.session_state.session_start = datetime.now()
+        # Snapshotted here, not read again at End Session - the Climber Name
+        # box above is a live widget, so if it were re-read at End time,
+        # editing it mid-visit (e.g. handing the phone to a friend) would
+        # silently reattribute the whole session to the new name.
+        st.session_state.session_climber = climber_name
+        st.rerun()
+else:
+    elapsed_min = (datetime.now() - st.session_state.session_start).total_seconds() / 60
+    start_label = st.session_state.session_start.strftime("%I:%M %p").lstrip("0")
+    st.sidebar.caption(f"Started {start_label} · {elapsed_min:.0f} min so far")
+    if st.sidebar.button("⏹ End Session", use_container_width=True):
+        session_climber = st.session_state.session_climber
+        session_ended_at = datetime.now()
+        duration_min = log_session(session_climber, st.session_state.session_start, session_ended_at)
+        notifications.send_email(
+            subject=f"HarnessSync: {session_climber} finished a {duration_min:.0f} min session",
+            body=(
+                f"Climber: {session_climber}\n"
+                f"Started: {st.session_state.session_start.isoformat(timespec='minutes')}\n"
+                f"Ended: {session_ended_at.isoformat(timespec='minutes')}\n"
+                f"Duration: {duration_min:.1f} minutes\n"
+            ),
+        )
+        st.session_state.session_start = None
+        st.session_state.session_climber = None
+        st.sidebar.success(f"Session logged: {duration_min:.0f} min.")
+        st.rerun()
+
 # ----------------- MAIN PANEL HEADER -----------------
 st.title("🧗 HarnessSync")
 st.subheader("Climb Logging, Grade Progression & Leaderboards")
 
-dashboard_tab, leaderboard_tab, coach_tab, guide_tab = st.tabs(
-    ["📊 Dashboard", "🏆 Leaderboard", "🤖 AI Coach", "📖 Guide"]
+dashboard_tab, leaderboard_tab, coach_tab, user_feedback_tab, admin_tab, guide_tab = st.tabs(
+    ["📊 Dashboard", "🏆 Leaderboard", "🤖 AI Coach", "💬 Feedback", "🔐 Admin", "📖 Guide"]
 )
 
 with guide_tab:
@@ -152,6 +196,82 @@ with coach_tab:
                             use_container_width=True,
                             hide_index=True,
                         )
+
+with user_feedback_tab:
+    st.header("💬 Feedback")
+    st.caption("Bugs, ideas, or just how it's going - this goes straight to the developer.")
+
+    with st.form("feedback_form", clear_on_submit=True):
+        feedback_category = st.selectbox("Category", ["Bug", "Feature Idea", "General"])
+        feedback_rating = st.slider("Overall, how's the app working for you?", 1, 5, 4)
+        feedback_message = st.text_area("Details")
+        feedback_submitted = st.form_submit_button("Send Feedback", use_container_width=True)
+
+    if feedback_submitted:
+        if not feedback_message.strip():
+            st.warning("Add a note before sending - even a sentence helps.")
+        else:
+            submit_feedback(climber_name, feedback_category, feedback_rating, feedback_message)
+            emailed = notifications.send_email(
+                subject=f"HarnessSync feedback ({feedback_category}) from {climber_name}",
+                body=f"Rating: {feedback_rating}/5\nCategory: {feedback_category}\n\n{feedback_message}",
+            )
+            st.success(
+                "Feedback sent - thank you!"
+                if emailed else
+                "Feedback saved (email delivery isn't configured, so it wasn't emailed)."
+            )
+
+with admin_tab:
+    st.header("🔐 Admin")
+
+    try:
+        admin_secret = st.secrets.get("admin", {}).get("password")
+    except Exception:
+        admin_secret = None
+
+    if not admin_secret:
+        st.info(
+            "Admin dashboard isn't configured. Add this to `.streamlit/secrets.toml` to enable it:\n\n"
+            "```toml\n[admin]\npassword = \"choose-a-password\"\n```"
+        )
+    elif not st.session_state.get("admin_authed"):
+        admin_pw = st.text_input("Password", type="password")
+        if st.button("Unlock"):
+            if admin_pw == admin_secret:
+                st.session_state.admin_authed = True
+                st.rerun()
+            else:
+                st.error("Wrong password.")
+    else:
+        all_feedback = load_feedback()
+        all_sessions = get_sessions()
+
+        st.write("### 💬 Feedback")
+        if all_feedback:
+            st.dataframe(pd.DataFrame(all_feedback), use_container_width=True, hide_index=True)
+        else:
+            st.info("No feedback submitted yet.")
+
+        st.write("### ⏱️ Session Time")
+        if all_sessions:
+            sess_df = pd.DataFrame(all_sessions)
+            s_col1, s_col2, s_col3 = st.columns(3)
+            s_col1.metric("Total Sessions", len(sess_df))
+            s_col2.metric("Total Time (hrs)", f"{sess_df['duration_min'].sum() / 60:.1f}")
+            s_col3.metric("Avg Session (min)", f"{sess_df['duration_min'].mean():.0f}")
+            st.dataframe(sess_df, use_container_width=True, hide_index=True)
+        else:
+            st.info("No sessions logged yet.")
+
+        if all_feedback or all_sessions:
+            if not ai_coach.is_configured():
+                st.caption("Configure the AI Coach's Anthropic key to get an auto-generated summary here.")
+            elif st.button("🤖 Summarize: where should this go next?"):
+                with st.spinner("Thinking..."):
+                    st.session_state.admin_summary = ai_coach.summarize_feedback(all_feedback, all_sessions)
+            if st.session_state.get("admin_summary"):
+                st.markdown(st.session_state.admin_summary)
 
 with leaderboard_tab:
     st.header("🏆 Leaderboard")

@@ -1,10 +1,9 @@
 import os
-import json
-import tempfile
 import threading
 from datetime import date
 
 from grades import grade_rank
+import json_store
 
 # Anchored to this file's own location rather than the current working
 # directory - Streamlit (and any tool that launches it) can be started from
@@ -13,21 +12,6 @@ from grades import grade_rank
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROFILES_DIR = os.path.join(BASE_DIR, "climber_profiles")
 PR_FILE_PATH = os.path.join(PROFILES_DIR, "personal_records.json")
-
-# Every open() below passes encoding explicitly. Python defaults to the
-# locale encoding, which is cp1252 on this machine - so a climber name with
-# an accent (José, Müller) raised UnicodeEncodeError while saving and threw
-# away the climb that was being recorded.
-FILE_ENCODING = "utf-8"
-
-
-def setup_directories():
-    if not os.path.exists(PROFILES_DIR):
-        os.makedirs(PROFILES_DIR)
-    if not os.path.exists(PR_FILE_PATH):
-        with open(PR_FILE_PATH, 'w', encoding=FILE_ENCODING) as f:
-            json.dump({}, f)
-
 
 # Saving a climb is a read-modify-write of one shared JSON file. Streamlit runs
 # every browser session's script in its own thread, so as soon as more than one
@@ -42,32 +26,8 @@ def setup_directories():
 _RECORDS_LOCK = threading.RLock()
 
 
-def _write_records_atomically(records):
-    """Write via a temp file + os.replace so an interrupted save can't leave a
-    half-written (and therefore unparseable) records file behind."""
-    fd, tmp_path = tempfile.mkstemp(dir=PROFILES_DIR, suffix=".tmp")
-    try:
-        with os.fdopen(fd, "w", encoding=FILE_ENCODING) as f:
-            json.dump(records, f, indent=4, ensure_ascii=False)
-        os.replace(tmp_path, PR_FILE_PATH)  # atomic on Windows and POSIX
-    except BaseException:
-        try:
-            os.unlink(tmp_path)
-        except OSError:
-            pass
-        raise
-
-
 def load_all_records():
-    setup_directories()
-    try:
-        with open(PR_FILE_PATH, 'r', encoding=FILE_ENCODING) as f:
-            records = json.load(f)
-    except (json.JSONDecodeError, ValueError, UnicodeDecodeError):
-        # A truncated or hand-edited records file used to crash the whole
-        # dashboard on import. An unreadable file means "no records yet".
-        return {}
-    return records if isinstance(records, dict) else {}
+    return json_store.load(PROFILES_DIR, PR_FILE_PATH, default={}, expected_type=dict)
 
 
 def get_climbs(climber_name, discipline=None):
@@ -119,9 +79,45 @@ def log_climb(climber_name, discipline, grade, status, route_name="", location="
             "location": location.strip(),
         })
 
-        _write_records_atomically(all_records)
+        json_store.write_atomically(PROFILES_DIR, PR_FILE_PATH, all_records)
 
     pr_alerts = []
     if grade_rank(discipline, grade) > previous_best_rank:
         pr_alerts.append(f"🏆 New {discipline} personal best: {grade}!")
     return pr_alerts
+
+
+def log_session(climber_name, started_at, ended_at):
+    """Appends one completed gym/crag-visit session to the climber's history.
+    `started_at`/`ended_at` are datetime objects. Returns the duration in
+    minutes."""
+    duration_min = round((ended_at - started_at).total_seconds() / 60, 1)
+
+    with _RECORDS_LOCK:
+        all_records = load_all_records()
+        profile = all_records.setdefault(climber_name, {})
+        sessions = profile.setdefault("sessions", [])
+        sessions.append({
+            "date": started_at.date().isoformat(),
+            "started_at": started_at.isoformat(timespec="minutes"),
+            "ended_at": ended_at.isoformat(timespec="minutes"),
+            "duration_min": duration_min,
+        })
+        json_store.write_atomically(PROFILES_DIR, PR_FILE_PATH, all_records)
+
+    return duration_min
+
+
+def get_sessions(climber_name=None):
+    """Logged visit-sessions, newest first. Every entry across all climbers
+    when `climber_name` is omitted (used by the admin dashboard)."""
+    all_records = load_all_records()
+    if climber_name:
+        sessions = [dict(s, climber_name=climber_name) for s in all_records.get(climber_name, {}).get("sessions", [])]
+    else:
+        sessions = [
+            dict(s, climber_name=name)
+            for name, profile in all_records.items()
+            for s in profile.get("sessions", [])
+        ]
+    return sorted(sessions, key=lambda s: s.get("started_at", ""), reverse=True)

@@ -1,9 +1,11 @@
 """AI climbing coach powered by the Claude API.
 
-Three surfaces, all built on the same client/context helpers:
+Four surfaces, all built on the same client/context helpers:
   - analyze_session(): one-shot written takeaway right after a session ends
   - stream_chat_reply(): free-form Q&A grounded in the climber's data
   - generate_training_plan(): structured (JSON-schema) multi-week plan
+  - summarize_feedback(): product-direction takeaway for the developer,
+    built from accumulated user feedback and session-usage data
 """
 
 import json
@@ -28,6 +30,20 @@ SYSTEM_PROMPT = (
     "falls at one grade suggests it's a good projecting target, or a big jump in "
     "grade suggests checking technique before pushing further). You are not a "
     "substitute for a real coach or doctor for injury concerns."
+)
+
+# Deliberately separate from SYSTEM_PROMPT: summarize_feedback() talks to the
+# developer about the product, not to a climber about their training, so the
+# climbing-coach persona/grounding above (V-scale, YDS, injury-risk framing)
+# doesn't apply and would just confuse the model's framing of the task.
+ADMIN_SYSTEM_PROMPT = (
+    "You are a product analyst embedded in HarnessSync, a climbing log app. "
+    "You advise the developer (not a climber) on where the app should go next, "
+    "grounded in accumulated user feedback and visit-session usage data. Be "
+    "concise and concrete: identify real themes rather than restating "
+    "individual entries, distinguish genuine bugs from mere preferences, and "
+    "call out anything usage patterns imply (e.g. very short sessions might "
+    "mean people are bouncing off something specific)."
 )
 
 TRAINING_PLAN_SCHEMA = {
@@ -165,3 +181,29 @@ def generate_training_plan(climber_name, climber_profile, weeks=4, goal=""):
     )
     text = next(block.text for block in response.content if block.type == "text")
     return json.loads(text)
+
+
+def summarize_feedback(feedback_entries, session_stats):
+    """Product-direction takeaway for the developer, built from accumulated
+    user feedback and session-usage data. Returns None if unconfigured."""
+    client = _get_client()
+    if client is None:
+        return None
+
+    context = {"feedback": feedback_entries, "sessions": session_stats}
+    response = client.messages.create(
+        model=MODEL,
+        max_tokens=1500,
+        system=ADMIN_SYSTEM_PROMPT,
+        messages=[{
+            "role": "user",
+            "content": (
+                "Here is accumulated user feedback and visit-session usage data, as "
+                "JSON. Identify the top 2-3 themes in the feedback, flag anything "
+                "that reads as a real bug versus a mere preference, and suggest what "
+                "to prioritize next.\n\n"
+                f"{json.dumps(context, indent=2, default=str)}"
+            ),
+        }],
+    )
+    return "".join(block.text for block in response.content if block.type == "text")
