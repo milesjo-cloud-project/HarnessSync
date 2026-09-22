@@ -85,6 +85,24 @@ class TestHarnessSync(unittest.TestCase):
         self.assertEqual(len(all_fb), 1)
         self.assertEqual(all_fb[0]["message"], "Add route tags!")
 
+    def test_projects_crud(self):
+        user = "ProjectorDave"
+        profile_manager.log_project(
+            user, "Boulder", "V6", route_name="The Overhang Crux", location="Gym", angle="Overhang", attempts=3, notes="Need high heel hook"
+        )
+        projs = profile_manager.get_projects(user)
+        self.assertEqual(len(projs), 1)
+        self.assertEqual(projs[0]["route_name"], "The Overhang Crux")
+        self.assertEqual(projs[0]["attempts"], 3)
+
+        # Graduate project to send
+        alerts = profile_manager.graduate_project(projs[0]["id"], send_status="Redpoint")
+        self.assertEqual(len(profile_manager.get_projects(user)), 0)
+        climbs = profile_manager.get_climbs(user)
+        self.assertEqual(len(climbs), 1)
+        self.assertEqual(climbs[0]["grade"], "V6")
+        self.assertEqual(climbs[0]["status"], "Redpoint")
+
 
 if __name__ == "__main__":
     unittest.main()

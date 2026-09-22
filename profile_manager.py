@@ -64,6 +64,9 @@ def get_climbs(climber_name=None, discipline=None):
                 "status": row["status"],
                 "route_name": row["route_name"] or "",
                 "location": row["location"] or "",
+                "environment": row["environment"] if "environment" in row.keys() else "Gym",
+                "angle": row["angle"] if "angle" in row.keys() else "Vertical",
+                "hold_type": row["hold_type"] if "hold_type" in row.keys() else "Mixed",
             }
             for row in cur.fetchall()
         ]
@@ -78,7 +81,7 @@ def best_climb(climber_name, discipline):
     return max(climbs, key=lambda c: grade_rank(discipline, c["grade"]))
 
 
-def log_climb(climber_name, discipline, grade, status, route_name="", location="", climb_date=None):
+def log_climb(climber_name, discipline, grade, status, route_name="", location="", environment="Gym", angle="Vertical", hold_type="Mixed", climb_date=None):
     """Appends one logged climb to the database. Returns PR alert strings if a record is set."""
     climb_date = climb_date or date.today().isoformat()
     route_name = route_name.strip()
@@ -93,9 +96,9 @@ def log_climb(climber_name, discipline, grade, status, route_name="", location="
 
     with db_store.get_db() as conn:
         conn.execute("""
-            INSERT INTO climbs (climber_name, date, discipline, grade, status, route_name, location)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (climber_name, climb_date, discipline, grade, status, route_name, location))
+            INSERT INTO climbs (climber_name, date, discipline, grade, status, route_name, location, environment, angle, hold_type)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (climber_name, climb_date, discipline, grade, status, route_name, location, environment, angle, hold_type))
 
     pr_alerts = []
     if grade_rank(discipline, grade) > previous_best_rank:
@@ -103,21 +106,88 @@ def log_climb(climber_name, discipline, grade, status, route_name="", location="
     return pr_alerts
 
 
-def update_climb(climb_id, discipline, grade, status, route_name="", location="", climb_date=None):
+def update_climb(climb_id, discipline, grade, status, route_name="", location="", environment="Gym", angle="Vertical", hold_type="Mixed", climb_date=None):
     """Updates an existing climb entry by ID."""
     climb_date = climb_date or date.today().isoformat()
     with db_store.get_db() as conn:
         conn.execute("""
             UPDATE climbs
-            SET discipline = ?, grade = ?, status = ?, route_name = ?, location = ?, date = ?
+            SET discipline = ?, grade = ?, status = ?, route_name = ?, location = ?, environment = ?, angle = ?, hold_type = ?, date = ?
             WHERE id = ?
-        """, (discipline, grade, status, route_name.strip(), location.strip(), climb_date, climb_id))
+        """, (discipline, grade, status, route_name.strip(), location.strip(), environment, angle, hold_type, climb_date, climb_id))
 
 
 def delete_climb(climb_id):
     """Deletes a climb entry by ID."""
     with db_store.get_db() as conn:
         conn.execute("DELETE FROM climbs WHERE id = ?", (climb_id,))
+
+
+# ----------------- PROJECTS -----------------
+def log_project(climber_name, discipline, grade, route_name="", location="", environment="Gym", angle="Vertical", hold_type="Mixed", attempts=1, notes=""):
+    """Adds a new project for a climber."""
+    project_date = date.today().isoformat()
+    with db_store.get_db() as conn:
+        conn.execute("""
+            INSERT INTO projects (climber_name, date, discipline, grade, route_name, location, environment, angle, hold_type, attempts, notes)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (climber_name, project_date, discipline, grade, route_name.strip(), location.strip(), environment, angle, hold_type, attempts, notes.strip()))
+
+
+def get_projects(climber_name=None):
+    """Retrieves active projects for a climber."""
+    query = "SELECT * FROM projects WHERE 1=1"
+    params = []
+    if climber_name:
+        query += " AND climber_name = ?"
+        params.append(climber_name)
+    query += " ORDER BY id DESC"
+
+    with db_store.get_db() as conn:
+        cur = conn.execute(query, params)
+        return [dict(r) for r in cur.fetchall()]
+
+
+def update_project(project_id, discipline, grade, route_name="", location="", environment="Gym", angle="Vertical", hold_type="Mixed", attempts=1, notes=""):
+    """Updates a project entry by ID."""
+    with db_store.get_db() as conn:
+        conn.execute("""
+            UPDATE projects
+            SET discipline = ?, grade = ?, route_name = ?, location = ?, environment = ?, angle = ?, hold_type = ?, attempts = ?, notes = ?
+            WHERE id = ?
+        """, (discipline, grade, route_name.strip(), location.strip(), environment, angle, hold_type, attempts, notes.strip(), project_id))
+
+
+def delete_project(project_id):
+    """Deletes a project by ID."""
+    with db_store.get_db() as conn:
+        conn.execute("DELETE FROM projects WHERE id = ?", (project_id,))
+
+
+def graduate_project(project_id, send_status="Redpoint"):
+    """Converts a project into a logged climb send and deletes the project."""
+    with db_store.get_db() as conn:
+        cur = conn.execute("SELECT * FROM projects WHERE id = ?", (project_id,))
+        proj = cur.fetchone()
+        if not proj:
+            return []
+        p = dict(proj)
+
+    alerts = log_climb(
+        climber_name=p["climber_name"],
+        discipline=p["discipline"],
+        grade=p["grade"],
+        status=send_status,
+        route_name=p["route_name"],
+        location=p["location"],
+        environment=p["environment"],
+        angle=p["angle"],
+        hold_type=p["hold_type"],
+        climb_date=date.today().isoformat(),
+    )
+    delete_project(project_id)
+    return alerts
+
 
 
 def log_session(climber_name, started_at, ended_at):

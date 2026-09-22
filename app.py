@@ -4,8 +4,13 @@ import streamlit as st
 import pandas as pd
 import altair as alt
 
-from grades import GRADES_BY_DISCIPLINE, SEND_STATUSES, grade_rank
-from profile_manager import log_climb, get_climbs, load_all_records, log_session, get_sessions, delete_climb, update_climb
+from grades import (
+    GRADES_BY_DISCIPLINE, SEND_STATUSES, ENVIRONMENTS, WALL_ANGLES, HOLD_TYPES, grade_rank
+)
+from profile_manager import (
+    log_climb, get_climbs, load_all_records, log_session, get_sessions, delete_climb, update_climb,
+    log_project, get_projects, update_project, delete_project, graduate_project
+)
 from feedback_manager import submit_feedback, load_feedback
 from user_guide import render_hardware_manual_tab
 from leaderboard_engine import compile_leaderboard
@@ -27,38 +32,45 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ----------------- SIDEBAR CONTROLS -----------------
-st.sidebar.header("📝 Log a Climb")
+st.sidebar.header("📝 Log a Climb / Session")
 
 climber_name = st.sidebar.text_input("Climber Name", value="Guest")
-# Outside the form (not the grade/status fields below) so switching disciplines
-# reruns immediately and the grade dropdown always matches - inside a form,
-# widgets don't rerun until submit, so the grade list would stay stale until
-# the climb was already logged.
 discipline = st.sidebar.radio("Discipline", ["Boulder", "Rope"], horizontal=True)
 
 with st.sidebar.form("log_climb_form", clear_on_submit=True):
     grade = st.selectbox("Grade", GRADES_BY_DISCIPLINE[discipline])
     status = st.selectbox("Send Status", SEND_STATUSES)
+    environment = st.selectbox("Environment", ENVIRONMENTS)
+    angle = st.selectbox("Wall Angle", WALL_ANGLES, index=1)
+    hold_type = st.selectbox("Hold Type", HOLD_TYPES, index=5)
     route_name = st.text_input("Route / Problem Name (optional)")
-    location = st.text_input("Location (optional)", placeholder="e.g. The Rock Gym")
+    location = st.text_input("Location (optional)", placeholder="e.g. Movement Gym / Red River Gorge")
     climb_date = st.date_input("Date", value=date.today())
     submitted = st.form_submit_button("🧗 Log Climb", use_container_width=True)
 
 if submitted:
     climb_date_str = climb_date.isoformat()
-    pr_alerts = log_climb(
-        climber_name, discipline, grade, status,
-        route_name=route_name, location=location, climb_date=climb_date_str,
-    )
-    st.sidebar.success(f"Logged {discipline} {grade} ({status}).")
-    for alert in pr_alerts:
-        st.sidebar.balloons()
-        st.sidebar.success(alert)
+    if status in ["Project", "Attempt"]:
+        log_project(
+            climber_name, discipline, grade,
+            route_name=route_name, location=location,
+            environment=environment, angle=angle, hold_type=hold_type,
+            attempts=1, notes="Logged from sidebar"
+        )
+        st.sidebar.success(f"Added {discipline} {grade} to your 🎯 Projects!")
+    else:
+        pr_alerts = log_climb(
+            climber_name, discipline, grade, status,
+            route_name=route_name, location=location,
+            environment=environment, angle=angle, hold_type=hold_type,
+            climb_date=climb_date_str,
+        )
+        st.sidebar.success(f"Logged {discipline} {grade} ({status}).")
+        for alert in pr_alerts:
+            st.sidebar.balloons()
+            st.sidebar.success(alert)
 
 # ----------------- SESSION TIMER -----------------
-# Tracks a whole gym/crag visit (not an individual climb) - "Start" when you
-# walk in, "End" when you're leaving. Kept in session_state, so it's scoped
-# to this one browser tab/visitor, same as every other widget here.
 st.sidebar.markdown("---")
 st.sidebar.header("⏱️ Session Timer")
 
@@ -69,10 +81,6 @@ if "session_start" not in st.session_state:
 if st.session_state.session_start is None:
     if st.sidebar.button("▶️ Start Session", use_container_width=True):
         st.session_state.session_start = datetime.now()
-        # Snapshotted here, not read again at End Session - the Climber Name
-        # box above is a live widget, so if it were re-read at End time,
-        # editing it mid-visit (e.g. handing the phone to a friend) would
-        # silently reattribute the whole session to the new name.
         st.session_state.session_climber = climber_name
         st.rerun()
 else:
@@ -99,10 +107,10 @@ else:
 
 # ----------------- MAIN PANEL HEADER -----------------
 st.title("🧗 HarnessSync")
-st.subheader("Climb Logging, Grade Progression & Leaderboards")
+st.subheader("Climb Logging, Volume Pyramids & Project Tracking")
 
-dashboard_tab, leaderboard_tab, user_feedback_tab, guide_tab = st.tabs(
-    ["📊 Dashboard", "🏆 Leaderboard", "💬 Feedback", "📖 Guide"]
+dashboard_tab, projects_tab, leaderboard_tab, user_feedback_tab, guide_tab = st.tabs(
+    ["📊 Dashboard", "🎯 Projects", "🏆 Leaderboard", "💬 Feedback", "📖 Guide & Reference"]
 )
 
 with guide_tab:
@@ -132,6 +140,81 @@ with user_feedback_tab:
                 if emailed else
                 "Feedback saved (email delivery isn't configured, so it wasn't emailed)."
             )
+
+with projects_tab:
+    st.header("🎯 Active Projects & Wishlist")
+    st.caption("Routes and boulders you are working on across sessions.")
+
+    with st.expander("➕ Add New Project"):
+        with st.form("add_project_form", clear_on_submit=True):
+            p_disc = st.radio("Discipline", ["Boulder", "Rope"], horizontal=True, key="p_disc")
+            p_grade = st.selectbox("Grade", GRADES_BY_DISCIPLINE[p_disc], key="p_grade")
+            p_route = st.text_input("Route / Problem Name", key="p_route")
+            p_loc = st.text_input("Location", key="p_loc")
+            p_env = st.selectbox("Environment", ENVIRONMENTS, key="p_env")
+            p_angle = st.selectbox("Wall Angle", WALL_ANGLES, index=1, key="p_angle")
+            p_hold = st.selectbox("Hold Type", HOLD_TYPES, index=5, key="p_hold")
+            p_attempts = st.number_input("Current Attempts", min_value=1, value=1, key="p_attempts")
+            p_notes = st.text_area("Beta / Notes", placeholder="e.g., heel hook on second move, small crimp at crux", key="p_notes")
+            p_submit = st.form_submit_button("Save Project", use_container_width=True)
+
+        if p_submit:
+            log_project(
+                climber_name, p_disc, p_grade,
+                route_name=p_route, location=p_loc,
+                environment=p_env, angle=p_angle, hold_type=p_hold,
+                attempts=p_attempts, notes=p_notes
+            )
+            st.success("Project added!")
+            st.rerun()
+
+    active_projects = get_projects(climber_name)
+    if not active_projects:
+        st.info("No active projects right now. Use the form above or the sidebar (set status to Project) to add one!")
+    else:
+        for proj in active_projects:
+            with st.container():
+                st.markdown(f"### 🧗 {proj['discipline']} {proj['grade']} - {proj['route_name'] or 'Unnamed Project'}")
+                p_col1, p_col2, p_col3, p_col4 = st.columns([2, 2, 2, 3])
+                with p_col1:
+                    st.write(f"**Location:** {proj['location'] or '—'}")
+                    st.write(f"**Environment:** {proj.get('environment', 'Gym')}")
+                with p_col2:
+                    st.write(f"**Angle:** {proj.get('angle', 'Vertical')}")
+                    st.write(f"**Holds:** {proj.get('hold_type', 'Mixed')}")
+                with p_col3:
+                    st.write(f"**Attempts:** {proj.get('attempts', 1)}")
+                    st.write(f"**Added:** {proj.get('date', '—')}")
+                with p_col4:
+                    if proj.get('notes'):
+                        st.info(f"**Notes:** {proj['notes']}")
+
+                b_col1, b_col2, b_col3 = st.columns([2, 2, 2])
+                with b_col1:
+                    if st.button(f"🎉 SENT IT! (Graduate)", key=f"grad_{proj['id']}", use_container_width=True, type="primary"):
+                        alerts = graduate_project(proj['id'], send_status="Redpoint")
+                        st.success(f"Graduated project to send history!")
+                        for a in alerts:
+                            st.balloons()
+                            st.success(a)
+                        st.rerun()
+                with b_col2:
+                    if st.button(f"➕ Add Attempt (+1)", key=f"att_{proj['id']}", use_container_width=True):
+                        update_project(
+                            proj['id'], proj['discipline'], proj['grade'],
+                            route_name=proj['route_name'], location=proj['location'],
+                            environment=proj.get('environment', 'Gym'),
+                            angle=proj.get('angle', 'Vertical'),
+                            hold_type=proj.get('hold_type', 'Mixed'),
+                            attempts=proj.get('attempts', 1) + 1,
+                            notes=proj.get('notes', '')
+                        )
+                        st.rerun()
+                with b_col3:
+                    if st.button(f"🗑️ Delete", key=f"del_proj_{proj['id']}", use_container_width=True):
+                        delete_project(proj['id'])
+                        st.rerun()
+                st.markdown("---")
 
 with leaderboard_tab:
     st.header("🏆 Leaderboard")
@@ -174,6 +257,33 @@ with dashboard_tab:
 
     st.markdown("---")
 
+    # ----------------- VOLUME PYRAMID -----------------
+    st.write("### 🏗️ Send Volume Pyramid & Style Breakdown")
+    if not climbs:
+        st.info("Log climbs to see your pyramid volume distribution!")
+    else:
+        pyr_disc = st.radio("Pyramid Discipline", ["Boulder", "Rope"], horizontal=True, key="pyr_disc")
+        filtered_climbs = [c for c in climbs if c["discipline"] == pyr_disc and c["status"] in ["Onsight", "Flash", "Redpoint", "Sent"]]
+        
+        if not filtered_climbs:
+            st.info(f"No completed sends logged for {pyr_disc} yet.")
+        else:
+            pyr_df = pd.DataFrame(filtered_climbs)
+            pyr_df["Rank"] = pyr_df["grade"].apply(lambda g: grade_rank(pyr_disc, g))
+            grade_counts = pyr_df.groupby(["grade", "Rank"]).size().reset_index(name="Sends")
+            grade_counts = grade_counts.sort_values("Rank", ascending=True)
+
+            pyramid_chart = alt.Chart(grade_counts).mark_bar().encode(
+                x=alt.X("Sends:Q", title="Total Sends"),
+                y=alt.Y("grade:N", title="Grade", sort="-x"),
+                color=alt.Color("Sends:Q", scale=alt.Scale(scheme="blues")),
+                tooltip=["grade", "Sends"]
+            ).properties(height=300)
+
+            st.altair_chart(pyramid_chart, use_container_width=True)
+
+    st.markdown("---")
+
     # ----------------- WORKSPACE SPLIT -----------------
     col_left, col_right = st.columns([1, 1])
 
@@ -184,9 +294,9 @@ with dashboard_tab:
             st.info("No climbs logged yet. Use the sidebar to log your first one.")
         else:
             history_df = pd.DataFrame(climbs)[
-                ["date", "discipline", "grade", "route_name", "status", "location"]
+                ["date", "discipline", "grade", "route_name", "status", "environment", "angle", "location"]
             ]
-            history_df.columns = ["Date", "Discipline", "Grade", "Route/Problem", "Status", "Location"]
+            history_df.columns = ["Date", "Discipline", "Grade", "Route/Problem", "Status", "Env", "Angle", "Location"]
             st.dataframe(history_df, use_container_width=True, hide_index=True)
 
             with st.expander("🛠️ Manage / Edit / Delete Climbs"):
@@ -206,7 +316,10 @@ with dashboard_tab:
                         edit_grade = st.selectbox("Grade", edit_grade_list, index=curr_g_idx, key="edit_grade")
                         edit_status_idx = SEND_STATUSES.index(target_climb["status"]) if target_climb["status"] in SEND_STATUSES else 0
                         edit_status = st.selectbox("Send Status", SEND_STATUSES, index=edit_status_idx, key="edit_status")
+                        edit_env = st.selectbox("Environment", ENVIRONMENTS, index=ENVIRONMENTS.index(target_climb.get("environment", "Gym")) if target_climb.get("environment") in ENVIRONMENTS else 0, key="edit_env")
                     with e_col2:
+                        edit_angle = st.selectbox("Wall Angle", WALL_ANGLES, index=WALL_ANGLES.index(target_climb.get("angle", "Vertical")) if target_climb.get("angle") in WALL_ANGLES else 1, key="edit_angle")
+                        edit_hold = st.selectbox("Hold Type", HOLD_TYPES, index=HOLD_TYPES.index(target_climb.get("hold_type", "Mixed")) if target_climb.get("hold_type") in HOLD_TYPES else 5, key="edit_hold")
                         edit_route = st.text_input("Route / Problem Name", value=target_climb["route_name"], key="edit_route")
                         edit_loc = st.text_input("Location", value=target_climb["location"], key="edit_loc")
                         try:
@@ -225,6 +338,9 @@ with dashboard_tab:
                                 edit_status,
                                 route_name=edit_route,
                                 location=edit_loc,
+                                environment=edit_env,
+                                angle=edit_angle,
+                                hold_type=edit_hold,
                                 climb_date=edit_date.isoformat(),
                             )
                             st.success("Climb record updated!")
@@ -245,16 +361,11 @@ with dashboard_tab:
             prog_df["Rank"] = prog_df.apply(lambda r: grade_rank(r["discipline"], r["grade"]), axis=1)
             prog_df = prog_df.sort_values("date")
 
-            # Ordinal, not temporal: a bare "YYYY-MM-DD" string parsed as a
-            # timestamp gets treated as UTC midnight, which the browser then
-            # renders in local time - shifting the axis label onto the wrong
-            # day/hour. Dates-as-categories sidesteps that; ISO strings still
-            # sort correctly as text, so chronological order is unaffected.
             progression_chart = alt.Chart(prog_df).mark_line(point=True, interpolate="step-after").encode(
                 x=alt.X("date:O", title="Date", sort=None),
                 y=alt.Y("Rank:Q", title="Difficulty Rank"),
                 color=alt.Color("discipline:N", title="Discipline", scale=alt.Scale(scheme="category10")),
-                tooltip=["date", "discipline", "grade", "status", "route_name"],
+                tooltip=["date", "discipline", "grade", "status", "route_name", "environment"],
             ).properties(height=360).interactive()
 
             st.altair_chart(progression_chart, use_container_width=True)

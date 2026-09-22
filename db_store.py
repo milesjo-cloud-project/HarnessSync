@@ -44,7 +44,7 @@ def get_db():
 
 
 def init_db():
-    """Initializes tables and performs legacy JSON data migration if needed."""
+    """Initializes tables and performs schema migrations if needed."""
     ensure_profiles_dir()
     with get_db() as conn:
         conn.execute("""
@@ -56,9 +56,40 @@ def init_db():
                 grade TEXT NOT NULL,
                 status TEXT NOT NULL,
                 route_name TEXT DEFAULT '',
-                location TEXT DEFAULT ''
+                location TEXT DEFAULT '',
+                environment TEXT DEFAULT 'Gym',
+                angle TEXT DEFAULT 'Vertical',
+                hold_type TEXT DEFAULT 'Mixed'
             )
         """)
+
+        # Alter table if upgrading existing DB
+        cur = conn.execute("PRAGMA table_info(climbs)")
+        cols = [r["name"] for r in cur.fetchall()]
+        if "environment" not in cols:
+            conn.execute("ALTER TABLE climbs ADD COLUMN environment TEXT DEFAULT 'Gym'")
+        if "angle" not in cols:
+            conn.execute("ALTER TABLE climbs ADD COLUMN angle TEXT DEFAULT 'Vertical'")
+        if "hold_type" not in cols:
+            conn.execute("ALTER TABLE climbs ADD COLUMN hold_type TEXT DEFAULT 'Mixed'")
+
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS projects (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                climber_name TEXT NOT NULL,
+                date TEXT NOT NULL,
+                discipline TEXT NOT NULL,
+                grade TEXT NOT NULL,
+                route_name TEXT DEFAULT '',
+                location TEXT DEFAULT '',
+                environment TEXT DEFAULT 'Gym',
+                angle TEXT DEFAULT 'Vertical',
+                hold_type TEXT DEFAULT 'Mixed',
+                attempts INTEGER DEFAULT 1,
+                notes TEXT DEFAULT ''
+            )
+        """)
+
         conn.execute("""
             CREATE TABLE IF NOT EXISTS sessions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
