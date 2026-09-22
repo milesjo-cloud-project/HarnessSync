@@ -1,35 +1,39 @@
-import os
-import threading
 from datetime import datetime
-
-import json_store
-
-# Same storage pattern as profile_manager.py: anchored to this file's own
-# location, atomic write-then-replace (shared via json_store.py), one lock
-# around the read-modify-write so concurrent Streamlit sessions can't
-# clobber each other's submissions.
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-PROFILES_DIR = os.path.join(BASE_DIR, "climber_profiles")
-FEEDBACK_FILE_PATH = os.path.join(PROFILES_DIR, "feedback_log.json")
-
-_FEEDBACK_LOCK = threading.RLock()
+import db_store
 
 
 def load_feedback():
-    entries = json_store.load(PROFILES_DIR, FEEDBACK_FILE_PATH, default=[], expected_type=list)
-    return sorted(entries, key=lambda e: e.get("date", ""), reverse=True)
+    """Loads all feedback entries, newest first."""
+    with db_store.get_db() as conn:
+        cur = conn.execute("SELECT * FROM feedback ORDER BY date DESC, id DESC")
+        entries = [
+            {
+                "id": row["id"],
+                "date": row["date"],
+                "climber_name": row["climber_name"],
+                "category": row["category"],
+                "rating": row["rating"],
+                "message": row["message"],
+            }
+            for row in cur.fetchall()
+        ]
+    return entries
 
 
 def submit_feedback(climber_name, category, rating, message):
-    entry = {
-        "date": datetime.now().isoformat(timespec="minutes"),
+    """Submits a feedback entry to SQLite."""
+    date_str = datetime.now().isoformat(timespec="minutes")
+    msg_clean = message.strip()
+    with db_store.get_db() as conn:
+        conn.execute("""
+            INSERT INTO feedback (climber_name, date, category, rating, message)
+            VALUES (?, ?, ?, ?, ?)
+        """, (climber_name, date_str, category, rating, msg_clean))
+
+    return {
+        "date": date_str,
         "climber_name": climber_name,
         "category": category,
         "rating": rating,
-        "message": message.strip(),
+        "message": msg_clean,
     }
-    with _FEEDBACK_LOCK:
-        entries = load_feedback()
-        entries.append(entry)
-        json_store.write_atomically(PROFILES_DIR, FEEDBACK_FILE_PATH, entries)
-    return entry

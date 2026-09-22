@@ -5,11 +5,10 @@ import pandas as pd
 import altair as alt
 
 from grades import GRADES_BY_DISCIPLINE, SEND_STATUSES, grade_rank
-from profile_manager import log_climb, get_climbs, load_all_records, log_session, get_sessions
+from profile_manager import log_climb, get_climbs, load_all_records, log_session, get_sessions, delete_climb, update_climb
 from feedback_manager import submit_feedback, load_feedback
 from user_guide import render_hardware_manual_tab
 from leaderboard_engine import compile_leaderboard
-import ai_coach
 import notifications
 
 st.set_page_config(page_title="HarnessSync | Climbing Intel", layout="wide")
@@ -55,18 +54,6 @@ if submitted:
     for alert in pr_alerts:
         st.sidebar.balloons()
         st.sidebar.success(alert)
-
-    if ai_coach.is_configured():
-        entry = {
-            "date": climb_date_str, "discipline": discipline, "grade": grade,
-            "status": status, "route_name": route_name, "location": location,
-        }
-        try:
-            st.session_state.last_coach_feedback = ai_coach.analyze_session(
-                climber_name, discipline, entry, get_climbs(climber_name, discipline)[:10],
-            )
-        except Exception as exc:
-            st.session_state.last_coach_feedback = f"⚠️ Coach feedback failed: {exc}"
 
 # ----------------- SESSION TIMER -----------------
 # Tracks a whole gym/crag visit (not an individual climb) - "Start" when you
@@ -114,88 +101,12 @@ else:
 st.title("🧗 HarnessSync")
 st.subheader("Climb Logging, Grade Progression & Leaderboards")
 
-dashboard_tab, leaderboard_tab, coach_tab, user_feedback_tab, admin_tab, guide_tab = st.tabs(
-    ["📊 Dashboard", "🏆 Leaderboard", "🤖 AI Coach", "💬 Feedback", "🔐 Admin", "📖 Guide"]
+dashboard_tab, leaderboard_tab, user_feedback_tab, guide_tab = st.tabs(
+    ["📊 Dashboard", "🏆 Leaderboard", "💬 Feedback", "📖 Guide"]
 )
 
 with guide_tab:
     render_hardware_manual_tab()
-
-with coach_tab:
-    st.header("🤖 AI Coach")
-
-    if not ai_coach.is_configured():
-        st.warning(
-            "AI Coach isn't configured yet. Add your Anthropic API key to "
-            "`.streamlit/secrets.toml`:\n\n"
-            "```toml\n[anthropic]\napi_key = \"sk-ant-...\"\n```\n\n"
-            "Get a key at [console.anthropic.com](https://console.anthropic.com)."
-        )
-    else:
-        feedback_tab, chat_tab, plan_tab = st.tabs(
-            ["📋 Post-Session Feedback", "💬 Chat", "🗓️ Training Plan"]
-        )
-
-        with feedback_tab:
-            st.caption("Automatically generated right after each climb is logged.")
-            feedback = st.session_state.get("last_coach_feedback")
-            if feedback:
-                st.markdown(feedback)
-            else:
-                st.info("Log a climb in the sidebar to get feedback here.")
-
-        with chat_tab:
-            st.caption(f"Grounded in {climber_name}'s logged climbs and personal bests.")
-
-            if "coach_chat_history" not in st.session_state:
-                st.session_state.coach_chat_history = []
-
-            for msg in st.session_state.coach_chat_history:
-                with st.chat_message(msg["role"]):
-                    st.markdown(msg["content"])
-
-            if user_prompt := st.chat_input("Ask your coach anything..."):
-                st.session_state.coach_chat_history.append({"role": "user", "content": user_prompt})
-                with st.chat_message("user"):
-                    st.markdown(user_prompt)
-                with st.chat_message("assistant"):
-                    chat_context = {
-                        "climber_name": climber_name,
-                        "climbing_history": load_all_records().get(climber_name, {}),
-                    }
-                    reply = st.write_stream(
-                        ai_coach.stream_chat_reply(st.session_state.coach_chat_history, chat_context)
-                    )
-                st.session_state.coach_chat_history.append({"role": "assistant", "content": reply})
-
-        with plan_tab:
-            st.caption("Generates a structured multi-week plan from your personal records.")
-            plan_weeks = st.slider("Plan length (weeks)", 2, 12, 4)
-            plan_goal = st.text_input(
-                "Primary goal", placeholder="e.g. send my first 5.12a, build finger strength"
-            )
-            if st.button("Generate Training Plan", use_container_width=True):
-                with st.spinner("Building your plan..."):
-                    try:
-                        st.session_state.coach_training_plan = ai_coach.generate_training_plan(
-                            climber_name,
-                            load_all_records().get(climber_name, {}),
-                            weeks=plan_weeks,
-                            goal=plan_goal,
-                        )
-                    except Exception as exc:
-                        st.error(f"Couldn't generate a plan: {exc}")
-
-            plan = st.session_state.get("coach_training_plan")
-            if plan:
-                st.write(plan["summary"])
-                for week in plan["weeks"]:
-                    with st.expander(f"Week {week['week_number']}: {week['focus']}", expanded=False):
-                        st.dataframe(
-                            pd.DataFrame(week["sessions"]),
-                            use_container_width=True,
-                            hide_index=True,
-                        )
 
 with user_feedback_tab:
     st.header("💬 Feedback")
@@ -221,57 +132,6 @@ with user_feedback_tab:
                 if emailed else
                 "Feedback saved (email delivery isn't configured, so it wasn't emailed)."
             )
-
-with admin_tab:
-    st.header("🔐 Admin")
-
-    try:
-        admin_secret = st.secrets.get("admin", {}).get("password")
-    except Exception:
-        admin_secret = None
-
-    if not admin_secret:
-        st.info(
-            "Admin dashboard isn't configured. Add this to `.streamlit/secrets.toml` to enable it:\n\n"
-            "```toml\n[admin]\npassword = \"choose-a-password\"\n```"
-        )
-    elif not st.session_state.get("admin_authed"):
-        admin_pw = st.text_input("Password", type="password")
-        if st.button("Unlock"):
-            if admin_pw == admin_secret:
-                st.session_state.admin_authed = True
-                st.rerun()
-            else:
-                st.error("Wrong password.")
-    else:
-        all_feedback = load_feedback()
-        all_sessions = get_sessions()
-
-        st.write("### 💬 Feedback")
-        if all_feedback:
-            st.dataframe(pd.DataFrame(all_feedback), use_container_width=True, hide_index=True)
-        else:
-            st.info("No feedback submitted yet.")
-
-        st.write("### ⏱️ Session Time")
-        if all_sessions:
-            sess_df = pd.DataFrame(all_sessions)
-            s_col1, s_col2, s_col3 = st.columns(3)
-            s_col1.metric("Total Sessions", len(sess_df))
-            s_col2.metric("Total Time (hrs)", f"{sess_df['duration_min'].sum() / 60:.1f}")
-            s_col3.metric("Avg Session (min)", f"{sess_df['duration_min'].mean():.0f}")
-            st.dataframe(sess_df, use_container_width=True, hide_index=True)
-        else:
-            st.info("No sessions logged yet.")
-
-        if all_feedback or all_sessions:
-            if not ai_coach.is_configured():
-                st.caption("Configure the AI Coach's Anthropic key to get an auto-generated summary here.")
-            elif st.button("🤖 Summarize: where should this go next?"):
-                with st.spinner("Thinking..."):
-                    st.session_state.admin_summary = ai_coach.summarize_feedback(all_feedback, all_sessions)
-            if st.session_state.get("admin_summary"):
-                st.markdown(st.session_state.admin_summary)
 
 with leaderboard_tab:
     st.header("🏆 Leaderboard")
@@ -328,6 +188,52 @@ with dashboard_tab:
             ]
             history_df.columns = ["Date", "Discipline", "Grade", "Route/Problem", "Status", "Location"]
             st.dataframe(history_df, use_container_width=True, hide_index=True)
+
+            with st.expander("🛠️ Manage / Edit / Delete Climbs"):
+                climb_options = {
+                    f"{c['date']} - {c['discipline']} {c['grade']} ({c['status']})"
+                    + (f" | {c['route_name']}" if c['route_name'] else ""): c
+                    for c in climbs
+                }
+                selected_label = st.selectbox("Select climb record to manage", list(climb_options.keys()))
+                if selected_label:
+                    target_climb = climb_options[selected_label]
+                    e_col1, e_col2 = st.columns(2)
+                    with e_col1:
+                        edit_disc = st.selectbox("Discipline", ["Boulder", "Rope"], index=0 if target_climb["discipline"] == "Boulder" else 1, key="edit_disc")
+                        edit_grade_list = GRADES_BY_DISCIPLINE[edit_disc]
+                        curr_g_idx = edit_grade_list.index(target_climb["grade"]) if target_climb["grade"] in edit_grade_list else 0
+                        edit_grade = st.selectbox("Grade", edit_grade_list, index=curr_g_idx, key="edit_grade")
+                        edit_status_idx = SEND_STATUSES.index(target_climb["status"]) if target_climb["status"] in SEND_STATUSES else 0
+                        edit_status = st.selectbox("Send Status", SEND_STATUSES, index=edit_status_idx, key="edit_status")
+                    with e_col2:
+                        edit_route = st.text_input("Route / Problem Name", value=target_climb["route_name"], key="edit_route")
+                        edit_loc = st.text_input("Location", value=target_climb["location"], key="edit_loc")
+                        try:
+                            default_d = datetime.strptime(target_climb["date"], "%Y-%m-%d").date()
+                        except Exception:
+                            default_d = date.today()
+                        edit_date = st.date_input("Date", value=default_d, key="edit_date")
+
+                    btn_col1, btn_col2 = st.columns(2)
+                    with btn_col1:
+                        if st.button("💾 Save Changes", use_container_width=True, type="primary"):
+                            update_climb(
+                                target_climb["id"],
+                                edit_disc,
+                                edit_grade,
+                                edit_status,
+                                route_name=edit_route,
+                                location=edit_loc,
+                                climb_date=edit_date.isoformat(),
+                            )
+                            st.success("Climb record updated!")
+                            st.rerun()
+                    with btn_col2:
+                        if st.button("🗑️ Delete Climb", use_container_width=True):
+                            delete_climb(target_climb["id"])
+                            st.warning("Climb record deleted.")
+                            st.rerun()
 
     with col_right:
         st.write("### 🧗 Grade Progression")

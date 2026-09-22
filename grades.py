@@ -6,6 +6,7 @@ climber's hardest send.
 """
 
 YDS_GRADES = [
+    "5.0", "5.1", "5.2", "5.3", "5.4", "5.5",
     "5.6", "5.7", "5.8", "5.9",
     "5.10a", "5.10b", "5.10c", "5.10d",
     "5.11a", "5.11b", "5.11c", "5.11d",
@@ -15,7 +16,7 @@ YDS_GRADES = [
     "5.15a", "5.15b", "5.15c", "5.15d",
 ]
 
-V_GRADES = [f"V{n}" for n in range(11)]  # V0-V10
+V_GRADES = ["VB"] + [f"V{n}" for n in range(18)]  # VB, V0-V17
 
 GRADES_BY_DISCIPLINE = {
     "Boulder": V_GRADES,

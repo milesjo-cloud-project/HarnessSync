@@ -1,43 +1,73 @@
 import os
-import threading
 from datetime import date
 
 from grades import grade_rank
-import json_store
-
-# Anchored to this file's own location rather than the current working
-# directory - Streamlit (and any tool that launches it) can be started from
-# a different folder than the project root, which previously meant records
-# could silently be written to (or read from) the wrong place.
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-PROFILES_DIR = os.path.join(BASE_DIR, "climber_profiles")
-PR_FILE_PATH = os.path.join(PROFILES_DIR, "personal_records.json")
-
-# Saving a climb is a read-modify-write of one shared JSON file. Streamlit runs
-# every browser session's script in its own thread, so as soon as more than one
-# person uses the dashboard, two saves interleave: both read the same starting
-# state, and whichever writes last erases the other's climb. Measured with 8
-# concurrent saves, only 2 survived.
-#
-# One lock around the whole read-modify-write serialises them. This covers
-# threads in a single process, which is exactly the Streamlit case (one server,
-# many sessions). Two *separate* Streamlit processes pointed at the same file
-# would still need OS-level file locking.
-_RECORDS_LOCK = threading.RLock()
+import db_store
 
 
 def load_all_records():
-    return json_store.load(PROFILES_DIR, PR_FILE_PATH, default={}, expected_type=dict)
+    """Loads all climber records in the legacy dictionary format for compatibility
+    with AI coach and existing callers."""
+    records = {}
+    with db_store.get_db() as conn:
+        climbs_cur = conn.execute("SELECT * FROM climbs ORDER BY date DESC, id DESC")
+        for row in climbs_cur.fetchall():
+            c = dict(row)
+            name = c["climber_name"]
+            profile = records.setdefault(name, {"climbs": [], "sessions": []})
+            profile["climbs"].append({
+                "id": c["id"],
+                "date": c["date"],
+                "discipline": c["discipline"],
+                "grade": c["grade"],
+                "status": c["status"],
+                "route_name": c["route_name"] or "",
+                "location": c["location"] or "",
+            })
+
+        sessions_cur = conn.execute("SELECT * FROM sessions ORDER BY started_at DESC")
+        for row in sessions_cur.fetchall():
+            s = dict(row)
+            name = s["climber_name"]
+            profile = records.setdefault(name, {"climbs": [], "sessions": []})
+            profile["sessions"].append({
+                "id": s["id"],
+                "date": s["date"],
+                "started_at": s["started_at"],
+                "ended_at": s["ended_at"],
+                "duration_min": s["duration_min"],
+            })
+    return records
 
 
-def get_climbs(climber_name, discipline=None):
-    """A climber's logged climbs, newest first. Filters by discipline
-    ("Boulder"/"Rope") when given."""
-    all_records = load_all_records()
-    climbs = all_records.get(climber_name, {}).get("climbs", [])
+def get_climbs(climber_name=None, discipline=None):
+    """Retrieves logged climbs, newest first. Can filter by climber_name and/or discipline."""
+    query = "SELECT * FROM climbs WHERE 1=1"
+    params = []
+    if climber_name:
+        query += " AND climber_name = ?"
+        params.append(climber_name)
     if discipline:
-        climbs = [c for c in climbs if c.get("discipline") == discipline]
-    return sorted(climbs, key=lambda c: c.get("date", ""), reverse=True)
+        query += " AND discipline = ?"
+        params.append(discipline)
+    query += " ORDER BY date DESC, id DESC"
+
+    with db_store.get_db() as conn:
+        cur = conn.execute(query, params)
+        climbs = [
+            {
+                "id": row["id"],
+                "climber_name": row["climber_name"],
+                "date": row["date"],
+                "discipline": row["discipline"],
+                "grade": row["grade"],
+                "status": row["status"],
+                "route_name": row["route_name"] or "",
+                "location": row["location"] or "",
+            }
+            for row in cur.fetchall()
+        ]
+    return climbs
 
 
 def best_climb(climber_name, discipline):
@@ -49,37 +79,23 @@ def best_climb(climber_name, discipline):
 
 
 def log_climb(climber_name, discipline, grade, status, route_name="", location="", climb_date=None):
-    """Appends one logged climb to the climber's history.
-
-    Returns a list of PR alert strings (empty if this climb didn't set a new
-    hardest grade for the discipline) - mirrors the shape callers already
-    expect from a "did this session set a record" check.
-    """
+    """Appends one logged climb to the database. Returns PR alert strings if a record is set."""
     climb_date = climb_date or date.today().isoformat()
+    route_name = route_name.strip()
+    location = location.strip()
 
-    with _RECORDS_LOCK:
-        all_records = load_all_records()
-        # setdefault rather than a bare "not in" check: a profile written by an
-        # older version is missing "climbs" entirely, and indexing it raised
-        # KeyError mid-save - which lost the climb that was being recorded.
-        profile = all_records.setdefault(climber_name, {})
-        climbs = profile.setdefault("climbs", [])
+    # Determine previous best grade rank before inserting
+    existing_climbs = get_climbs(climber_name, discipline)
+    previous_best_rank = max(
+        (grade_rank(discipline, c["grade"]) for c in existing_climbs),
+        default=-1,
+    )
 
-        previous_best_rank = max(
-            (grade_rank(discipline, c["grade"]) for c in climbs if c.get("discipline") == discipline),
-            default=-1,
-        )
-
-        climbs.append({
-            "date": climb_date,
-            "discipline": discipline,
-            "grade": grade,
-            "status": status,
-            "route_name": route_name.strip(),
-            "location": location.strip(),
-        })
-
-        json_store.write_atomically(PROFILES_DIR, PR_FILE_PATH, all_records)
+    with db_store.get_db() as conn:
+        conn.execute("""
+            INSERT INTO climbs (climber_name, date, discipline, grade, status, route_name, location)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (climber_name, climb_date, discipline, grade, status, route_name, location))
 
     pr_alerts = []
     if grade_rank(discipline, grade) > previous_best_rank:
@@ -87,37 +103,59 @@ def log_climb(climber_name, discipline, grade, status, route_name="", location="
     return pr_alerts
 
 
-def log_session(climber_name, started_at, ended_at):
-    """Appends one completed gym/crag-visit session to the climber's history.
-    `started_at`/`ended_at` are datetime objects. Returns the duration in
-    minutes."""
-    duration_min = round((ended_at - started_at).total_seconds() / 60, 1)
+def update_climb(climb_id, discipline, grade, status, route_name="", location="", climb_date=None):
+    """Updates an existing climb entry by ID."""
+    climb_date = climb_date or date.today().isoformat()
+    with db_store.get_db() as conn:
+        conn.execute("""
+            UPDATE climbs
+            SET discipline = ?, grade = ?, status = ?, route_name = ?, location = ?, date = ?
+            WHERE id = ?
+        """, (discipline, grade, status, route_name.strip(), location.strip(), climb_date, climb_id))
 
-    with _RECORDS_LOCK:
-        all_records = load_all_records()
-        profile = all_records.setdefault(climber_name, {})
-        sessions = profile.setdefault("sessions", [])
-        sessions.append({
-            "date": started_at.date().isoformat(),
-            "started_at": started_at.isoformat(timespec="minutes"),
-            "ended_at": ended_at.isoformat(timespec="minutes"),
-            "duration_min": duration_min,
-        })
-        json_store.write_atomically(PROFILES_DIR, PR_FILE_PATH, all_records)
+
+def delete_climb(climb_id):
+    """Deletes a climb entry by ID."""
+    with db_store.get_db() as conn:
+        conn.execute("DELETE FROM climbs WHERE id = ?", (climb_id,))
+
+
+def log_session(climber_name, started_at, ended_at):
+    """Appends one completed visit session to database. Returns duration in minutes."""
+    duration_min = round((ended_at - started_at).total_seconds() / 60, 1)
+    session_date = started_at.date().isoformat()
+    start_str = started_at.isoformat(timespec="minutes")
+    end_str = ended_at.isoformat(timespec="minutes")
+
+    with db_store.get_db() as conn:
+        conn.execute("""
+            INSERT INTO sessions (climber_name, date, started_at, ended_at, duration_min)
+            VALUES (?, ?, ?, ?, ?)
+        """, (climber_name, session_date, start_str, end_str, duration_min))
 
     return duration_min
 
 
 def get_sessions(climber_name=None):
-    """Logged visit-sessions, newest first. Every entry across all climbers
-    when `climber_name` is omitted (used by the admin dashboard)."""
-    all_records = load_all_records()
+    """Logged visit sessions, newest first."""
+    query = "SELECT * FROM sessions"
+    params = []
     if climber_name:
-        sessions = [dict(s, climber_name=climber_name) for s in all_records.get(climber_name, {}).get("sessions", [])]
-    else:
+        query += " WHERE climber_name = ?"
+        params.append(climber_name)
+    query += " ORDER BY started_at DESC"
+
+    with db_store.get_db() as conn:
+        cur = conn.execute(query, params)
         sessions = [
-            dict(s, climber_name=name)
-            for name, profile in all_records.items()
-            for s in profile.get("sessions", [])
+            {
+                "id": row["id"],
+                "climber_name": row["climber_name"],
+                "date": row["date"],
+                "started_at": row["started_at"],
+                "ended_at": row["ended_at"],
+                "duration_min": row["duration_min"],
+            }
+            for row in cur.fetchall()
         ]
-    return sorted(sessions, key=lambda s: s.get("started_at", ""), reverse=True)
+    return sessions
