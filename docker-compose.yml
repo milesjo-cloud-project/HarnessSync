@@ -1,0 +1,11 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8501:8501"
+    volumes:
+      # Persist the SQLite db and JSON logs across container rebuilds
+      - ./climber_profiles:/app/climber_profiles
+      # Secrets stay on the host; mounted read-only
+      - ./.streamlit/secrets.toml:/app/.streamlit/secrets.toml:ro
+    restart: unless-stopped
