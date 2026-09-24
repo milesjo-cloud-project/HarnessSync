@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# Cancel an older run on the same PR/branch when a new commit is pushed
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - run: python -m pytest -v
+
+  docker:
+    name: Docker build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: docker build -t harnesssync .
+
+      # Start the container and wait for Streamlit's health endpoint, so a
+      # broken import or bad dependency fails the PR instead of the deploy.
+      - name: Smoke test
+        run: |
+          docker run -d --name app -p 8501:8501 harnesssync
+          for i in $(seq 1 20); do
+            if curl -fs http://localhost:8501/_stcore/health; then
+              echo " - app is healthy"; exit 0
+            fi
+            sleep 3
+          done
+          echo "App never became healthy:"; docker logs app; exit 1
