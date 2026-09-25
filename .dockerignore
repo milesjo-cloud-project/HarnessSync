@@ -11,3 +11,6 @@ secrets.toml
 
 # Runtime data - lives in a mounted volume, not the image
 climber_profiles/
+
+# GitHub Pages site (home page + privacy policy), not part of the app
+docs/
