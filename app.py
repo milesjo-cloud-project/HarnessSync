@@ -1,40 +1,166 @@
-from datetime import date, datetime
+import os
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 import streamlit as st
 import pandas as pd
 import altair as alt
 
 from grades import (
-    GRADES_BY_DISCIPLINE, SEND_STATUSES, ENVIRONMENTS, WALL_ANGLES, HOLD_TYPES, grade_rank
+    GRADES_BY_DISCIPLINE, SEND_STATUSES, SENT_STATUSES, PROJECT_STATUSES,
+    ENVIRONMENTS, WALL_ANGLES, HOLD_TYPES, grade_rank
 )
 from profile_manager import (
-    log_climb, get_climbs, load_all_records, log_session, get_sessions, delete_climb, update_climb,
-    log_project, get_projects, update_project, delete_project, graduate_project
+    get_profile, save_profile, display_name_taken, delete_account,
+    log_climb, get_climbs, best_climb, log_session, delete_climb, update_climb,
+    log_project, get_projects, add_project_attempt, delete_project, graduate_project,
+    DISPLAY_NAME_MAX, ROUTE_MAX, LOCATION_MAX, NOTES_MAX,
 )
-from feedback_manager import submit_feedback, load_feedback
+from feedback_manager import submit_feedback, feedback_block_reason, MESSAGE_MAX
 from user_guide import render_hardware_manual_tab
 from leaderboard_engine import compile_leaderboard
 import notifications
 
 st.set_page_config(page_title="HarnessSync | Climbing Intel", layout="wide")
 
-# Custom visual card styling injection
-st.markdown("""
-    <style>
-    .metric-container {
-        background-color: #1E293B;
-        border-radius: 12px;
-        padding: 15px;
-        margin-bottom: 10px;
-        border: 1px solid #334155;
-    }
-    </style>
-""", unsafe_allow_html=True)
 
-# ----------------- SIDEBAR CONTROLS -----------------
+# ----------------- HELPERS -----------------
+def _secret_section(name):
+    try:
+        return st.secrets.get(name, {})
+    except Exception:
+        return {}
+
+
+def auth_configured():
+    return bool(_secret_section("auth"))
+
+
+def dev_mode():
+    """Local-only fallback that identifies users by a typed name instead of a
+    login. Must be switched on explicitly so a deploy that's missing its auth
+    config fails closed instead of silently becoming an open app."""
+    return os.environ.get("HARNESSSYNC_DEV_MODE") == "1" or bool(_secret_section("app").get("dev_mode"))
+
+
+def user_tz():
+    """The viewer's browser timezone, so "today" means their today - not the server's (UTC)."""
+    try:
+        return ZoneInfo(st.context.timezone) if st.context.timezone else timezone.utc
+    except Exception:
+        return timezone.utc
+
+
+def user_now():
+    return datetime.now(user_tz())
+
+
+def flash(kind, message=""):
+    """Queue a message to show after the next st.rerun() - anything drawn
+    right before a rerun is wiped before the user can see it."""
+    st.session_state.setdefault("flash", []).append((kind, message))
+
+
+def show_flash():
+    for kind, message in st.session_state.pop("flash", []):
+        if kind == "balloons":
+            st.balloons()
+        else:
+            st.toast(message, icon={"success": "✅", "warning": "⚠️", "info": "ℹ️"}.get(kind))
+
+
+def resolve_user():
+    """Returns (user_id, suggested_display_name) for whoever is using the app,
+    or stops the script to show a sign-in screen."""
+    if auth_configured():
+        if not st.user.is_logged_in:
+            st.title("🧗 HarnessSync")
+            st.subheader("Climb Logging, Volume Pyramids & Project Tracking")
+            st.write(
+                "Log your sends, track projects across sessions, and see your grade pyramid "
+                "and progression over time. Sign in to get started - your log is private to you."
+            )
+            st.button("Sign in with Google", on_click=st.login, type="primary")
+            st.stop()
+        user_id = st.user.get("email") or st.user.get("sub")
+        return user_id, st.user.get("given_name") or st.user.get("name") or ""
+
+    if dev_mode():
+        st.sidebar.warning("Dev mode: no login - anyone can use any name. Never deploy like this.")
+        name = st.sidebar.text_input("Climber Name", value="Guest", max_chars=DISPLAY_NAME_MAX).strip()
+        if not name:
+            st.info("Enter a climber name in the sidebar to get started.")
+            st.stop()
+        return f"dev:{name.lower()}", name
+
+    st.error(
+        "Sign-in isn't configured. Add an `[auth]` section to `.streamlit/secrets.toml` "
+        "(see DEPLOYMENT.md), or set `HARNESSSYNC_DEV_MODE=1` to run locally without login."
+    )
+    st.stop()
+
+
+def render_onboarding(user_id, suggested_name):
+    st.title("🧗 Welcome to HarnessSync")
+    st.write("Pick the name other climbers will see on the leaderboard. You can change it later.")
+    with st.form("onboarding_form"):
+        name = st.text_input("Display name", value=suggested_name[:DISPLAY_NAME_MAX], max_chars=DISPLAY_NAME_MAX)
+        show = st.checkbox("Show me on the public leaderboard", value=True)
+        if st.form_submit_button("Continue", type="primary"):
+            if not name.strip():
+                st.warning("Display name can't be empty.")
+            elif display_name_taken(name, exclude_user_id=user_id):
+                st.warning("That name is taken - try another.")
+            else:
+                save_profile(user_id, name, show)
+                st.rerun()
+    st.stop()
+
+
+# ----------------- IDENTITY -----------------
+user_id, suggested_name = resolve_user()
+profile = get_profile(user_id)
+if profile is None:
+    if dev_mode() and not auth_configured():
+        save_profile(user_id, suggested_name)
+        profile = get_profile(user_id)
+    else:
+        render_onboarding(user_id, suggested_name)
+display_name = profile["display_name"]
+
+show_flash()
+
+# ----------------- SIDEBAR: ACCOUNT -----------------
+with st.sidebar.expander(f"👤 {display_name}"):
+    if auth_configured():
+        st.caption(f"Signed in as {user_id}")
+    with st.form("account_form"):
+        new_name = st.text_input("Display name", value=display_name, max_chars=DISPLAY_NAME_MAX)
+        new_show = st.checkbox("Show me on the leaderboard", value=bool(profile["show_on_leaderboard"]))
+        if st.form_submit_button("Save", width="stretch"):
+            if not new_name.strip():
+                st.warning("Display name can't be empty.")
+            elif display_name_taken(new_name, exclude_user_id=user_id):
+                st.warning("That name is taken - try another.")
+            else:
+                save_profile(user_id, new_name, new_show)
+                flash("success", "Profile updated.")
+                st.rerun()
+    if auth_configured():
+        st.button("Log out", on_click=st.logout, width="stretch")
+
+    st.markdown("---")
+    st.caption("Danger zone")
+    confirm_delete = st.checkbox("I understand this permanently deletes all my climbs, projects and sessions")
+    if st.button("Delete my account & data", disabled=not confirm_delete, width="stretch"):
+        delete_account(user_id)
+        st.session_state.clear()
+        if auth_configured():
+            st.logout()
+        st.rerun()
+
+# ----------------- SIDEBAR: LOG A CLIMB -----------------
 st.sidebar.header("📝 Log a Climb / Session")
-
-climber_name = st.sidebar.text_input("Climber Name", value="Guest")
 discipline = st.sidebar.radio("Discipline", ["Boulder", "Rope"], horizontal=True)
 
 with st.sidebar.form("log_climb_form", clear_on_submit=True):
@@ -43,66 +169,51 @@ with st.sidebar.form("log_climb_form", clear_on_submit=True):
     environment = st.selectbox("Environment", ENVIRONMENTS)
     angle = st.selectbox("Wall Angle", WALL_ANGLES, index=1)
     hold_type = st.selectbox("Hold Type", HOLD_TYPES, index=5)
-    route_name = st.text_input("Route / Problem Name (optional)")
-    location = st.text_input("Location (optional)", placeholder="e.g. Movement Gym / Red River Gorge")
-    climb_date = st.date_input("Date", value=date.today())
-    submitted = st.form_submit_button("🧗 Log Climb", use_container_width=True)
+    route_name = st.text_input("Route / Problem Name (optional)", max_chars=ROUTE_MAX)
+    location = st.text_input("Location (optional)", placeholder="e.g. Movement Gym / Red River Gorge", max_chars=LOCATION_MAX)
+    climb_date = st.date_input("Date", value=user_now().date(), max_value=user_now().date())
+    submitted = st.form_submit_button("🧗 Log Climb", width="stretch")
 
 if submitted:
-    climb_date_str = climb_date.isoformat()
-    if status in ["Project", "Attempt"]:
-        log_project(
-            climber_name, discipline, grade,
+    if status in PROJECT_STATUSES:
+        result = log_project(
+            user_id, discipline, grade, climb_date.isoformat(),
             route_name=route_name, location=location,
             environment=environment, angle=angle, hold_type=hold_type,
-            attempts=1, notes="Logged from sidebar"
         )
-        st.sidebar.success(f"Added {discipline} {grade} to your 🎯 Projects!")
+        flash("success", f"Added an attempt to your {discipline} {grade} project!"
+              if result == "bumped" else f"Added {discipline} {grade} to your 🎯 Projects!")
     else:
         pr_alerts = log_climb(
-            climber_name, discipline, grade, status,
+            user_id, discipline, grade, status, climb_date.isoformat(),
             route_name=route_name, location=location,
             environment=environment, angle=angle, hold_type=hold_type,
-            climb_date=climb_date_str,
         )
-        st.sidebar.success(f"Logged {discipline} {grade} ({status}).")
+        flash("success", f"Logged {discipline} {grade} ({status}).")
         for alert in pr_alerts:
-            st.sidebar.balloons()
-            st.sidebar.success(alert)
+            flash("balloons")
+            flash("success", alert)
+    st.rerun()
 
 # ----------------- SESSION TIMER -----------------
 st.sidebar.markdown("---")
 st.sidebar.header("⏱️ Session Timer")
 
-if "session_start" not in st.session_state:
-    st.session_state.session_start = None
-    st.session_state.session_climber = None
-
-if st.session_state.session_start is None:
-    if st.sidebar.button("▶️ Start Session", use_container_width=True):
-        st.session_state.session_start = datetime.now()
-        st.session_state.session_climber = climber_name
+if st.session_state.get("session_start") is None:
+    if st.sidebar.button("▶️ Start Session", width="stretch"):
+        st.session_state.session_start = user_now()
+        st.session_state.session_user = user_id
         st.rerun()
 else:
-    elapsed_min = (datetime.now() - st.session_state.session_start).total_seconds() / 60
-    start_label = st.session_state.session_start.strftime("%I:%M %p").lstrip("0")
+    session_start = st.session_state.session_start
+    elapsed_min = (user_now() - session_start).total_seconds() / 60
+    start_label = session_start.strftime("%I:%M %p").lstrip("0")
     st.sidebar.caption(f"Started {start_label} · {elapsed_min:.0f} min so far")
-    if st.sidebar.button("⏹ End Session", use_container_width=True):
-        session_climber = st.session_state.session_climber
-        session_ended_at = datetime.now()
-        duration_min = log_session(session_climber, st.session_state.session_start, session_ended_at)
-        notifications.send_email(
-            subject=f"HarnessSync: {session_climber} finished a {duration_min:.0f} min session",
-            body=(
-                f"Climber: {session_climber}\n"
-                f"Started: {st.session_state.session_start.isoformat(timespec='minutes')}\n"
-                f"Ended: {session_ended_at.isoformat(timespec='minutes')}\n"
-                f"Duration: {duration_min:.1f} minutes\n"
-            ),
-        )
+    if st.sidebar.button("⏹ End Session", width="stretch"):
+        duration_min = log_session(st.session_state.session_user, session_start, user_now())
         st.session_state.session_start = None
-        st.session_state.session_climber = None
-        st.sidebar.success(f"Session logged: {duration_min:.0f} min.")
+        st.session_state.session_user = None
+        flash("success", f"Session logged: {duration_min:.0f} min.")
         st.rerun()
 
 # ----------------- MAIN PANEL HEADER -----------------
@@ -123,17 +234,23 @@ with user_feedback_tab:
     with st.form("feedback_form", clear_on_submit=True):
         feedback_category = st.selectbox("Category", ["Bug", "Feature Idea", "General"])
         feedback_rating = st.slider("Overall, how's the app working for you?", 1, 5, 4)
-        feedback_message = st.text_area("Details")
-        feedback_submitted = st.form_submit_button("Send Feedback", use_container_width=True)
+        feedback_message = st.text_area("Details", max_chars=MESSAGE_MAX)
+        feedback_submitted = st.form_submit_button("Send Feedback", width="stretch")
 
     if feedback_submitted:
+        blocked = feedback_block_reason(user_id)
         if not feedback_message.strip():
             st.warning("Add a note before sending - even a sentence helps.")
+        elif blocked:
+            st.warning(blocked)
         else:
-            submit_feedback(climber_name, feedback_category, feedback_rating, feedback_message)
+            submit_feedback(user_id, display_name, feedback_category, feedback_rating, feedback_message)
             emailed = notifications.send_email(
-                subject=f"HarnessSync feedback ({feedback_category}) from {climber_name}",
-                body=f"Rating: {feedback_rating}/5\nCategory: {feedback_category}\n\n{feedback_message}",
+                subject=f"HarnessSync feedback ({feedback_category}) from {display_name}",
+                body=(
+                    f"From: {display_name} ({user_id})\n"
+                    f"Rating: {feedback_rating}/5\nCategory: {feedback_category}\n\n{feedback_message}"
+                ),
             )
             st.success(
                 "Feedback sent - thank you!"
@@ -146,29 +263,32 @@ with projects_tab:
     st.caption("Routes and boulders you are working on across sessions.")
 
     with st.expander("➕ Add New Project"):
+        # Outside the form: the grade list depends on it, and widgets inside a
+        # form don't rerun the script until submit.
+        p_disc = st.radio("Discipline", ["Boulder", "Rope"], horizontal=True, key="p_disc")
         with st.form("add_project_form", clear_on_submit=True):
-            p_disc = st.radio("Discipline", ["Boulder", "Rope"], horizontal=True, key="p_disc")
             p_grade = st.selectbox("Grade", GRADES_BY_DISCIPLINE[p_disc], key="p_grade")
-            p_route = st.text_input("Route / Problem Name", key="p_route")
-            p_loc = st.text_input("Location", key="p_loc")
+            p_route = st.text_input("Route / Problem Name", key="p_route", max_chars=ROUTE_MAX)
+            p_loc = st.text_input("Location", key="p_loc", max_chars=LOCATION_MAX)
             p_env = st.selectbox("Environment", ENVIRONMENTS, key="p_env")
             p_angle = st.selectbox("Wall Angle", WALL_ANGLES, index=1, key="p_angle")
             p_hold = st.selectbox("Hold Type", HOLD_TYPES, index=5, key="p_hold")
-            p_attempts = st.number_input("Current Attempts", min_value=1, value=1, key="p_attempts")
-            p_notes = st.text_area("Beta / Notes", placeholder="e.g., heel hook on second move, small crimp at crux", key="p_notes")
-            p_submit = st.form_submit_button("Save Project", use_container_width=True)
+            p_attempts = st.number_input("Current Attempts", min_value=1, max_value=10000, value=1, key="p_attempts")
+            p_notes = st.text_area("Beta / Notes", placeholder="e.g., heel hook on second move, small crimp at crux",
+                                   key="p_notes", max_chars=NOTES_MAX)
+            p_submit = st.form_submit_button("Save Project", width="stretch")
 
         if p_submit:
             log_project(
-                climber_name, p_disc, p_grade,
+                user_id, p_disc, p_grade, user_now().date().isoformat(),
                 route_name=p_route, location=p_loc,
                 environment=p_env, angle=p_angle, hold_type=p_hold,
-                attempts=p_attempts, notes=p_notes
+                attempts=int(p_attempts), notes=p_notes
             )
-            st.success("Project added!")
+            flash("success", "Project saved!")
             st.rerun()
 
-    active_projects = get_projects(climber_name)
+    active_projects = get_projects(user_id)
     if not active_projects:
         st.info("No active projects right now. Use the form above or the sidebar (set status to Project) to add one!")
     else:
@@ -178,80 +298,66 @@ with projects_tab:
                 p_col1, p_col2, p_col3, p_col4 = st.columns([2, 2, 2, 3])
                 with p_col1:
                     st.write(f"**Location:** {proj['location'] or '—'}")
-                    st.write(f"**Environment:** {proj.get('environment', 'Gym')}")
+                    st.write(f"**Environment:** {proj['environment']}")
                 with p_col2:
-                    st.write(f"**Angle:** {proj.get('angle', 'Vertical')}")
-                    st.write(f"**Holds:** {proj.get('hold_type', 'Mixed')}")
+                    st.write(f"**Angle:** {proj['angle']}")
+                    st.write(f"**Holds:** {proj['hold_type']}")
                 with p_col3:
-                    st.write(f"**Attempts:** {proj.get('attempts', 1)}")
-                    st.write(f"**Added:** {proj.get('date', '—')}")
+                    st.write(f"**Attempts:** {proj['attempts']}")
+                    st.write(f"**Added:** {proj['date']}")
                 with p_col4:
-                    if proj.get('notes'):
+                    if proj["notes"]:
                         st.info(f"**Notes:** {proj['notes']}")
 
                 b_col1, b_col2, b_col3 = st.columns([2, 2, 2])
                 with b_col1:
-                    if st.button(f"🎉 SENT IT! (Graduate)", key=f"grad_{proj['id']}", use_container_width=True, type="primary"):
-                        alerts = graduate_project(proj['id'], send_status="Redpoint")
-                        st.success(f"Graduated project to send history!")
+                    if st.button("🎉 SENT IT! (Graduate)", key=f"grad_{proj['id']}", width="stretch", type="primary"):
+                        alerts = graduate_project(user_id, proj["id"], user_now().date().isoformat(), send_status="Redpoint")
+                        flash("success", "Graduated project to send history!")
                         for a in alerts:
-                            st.balloons()
-                            st.success(a)
+                            flash("balloons")
+                            flash("success", a)
                         st.rerun()
                 with b_col2:
-                    if st.button(f"➕ Add Attempt (+1)", key=f"att_{proj['id']}", use_container_width=True):
-                        update_project(
-                            proj['id'], proj['discipline'], proj['grade'],
-                            route_name=proj['route_name'], location=proj['location'],
-                            environment=proj.get('environment', 'Gym'),
-                            angle=proj.get('angle', 'Vertical'),
-                            hold_type=proj.get('hold_type', 'Mixed'),
-                            attempts=proj.get('attempts', 1) + 1,
-                            notes=proj.get('notes', '')
-                        )
+                    if st.button("➕ Add Attempt (+1)", key=f"att_{proj['id']}", width="stretch"):
+                        add_project_attempt(user_id, proj["id"])
                         st.rerun()
                 with b_col3:
-                    if st.button(f"🗑️ Delete", key=f"del_proj_{proj['id']}", use_container_width=True):
-                        delete_project(proj['id'])
+                    if st.button("🗑️ Delete", key=f"del_proj_{proj['id']}", width="stretch"):
+                        delete_project(user_id, proj["id"])
+                        flash("info", "Project deleted.")
                         st.rerun()
                 st.markdown("---")
 
 with leaderboard_tab:
     st.header("🏆 Leaderboard")
-    st.caption("Ranked by hardest logged grade within each discipline.")
+    st.caption("Ranked by hardest send (Onsight, Flash, Redpoint or Sent) within each discipline. "
+               "You can hide yourself from the leaderboard in the 👤 account menu.")
     lb_discipline = st.radio("Discipline", ["Boulder", "Rope"], horizontal=True, key="leaderboard_discipline")
     lb_df = compile_leaderboard(lb_discipline)
 
     if lb_df.empty:
-        st.info(f"No {lb_discipline} climbs logged yet. Log a climb to get on the board.")
+        st.info(f"No {lb_discipline} sends logged yet. Log one to get on the board.")
     else:
         lb_df = lb_df.reset_index(drop=True)
         medals = ["🥇", "🥈", "🥉"]
         lb_df.insert(0, "Rank", [medals[i] if i < 3 else str(i + 1) for i in range(len(lb_df))])
-        st.dataframe(lb_df, use_container_width=True, hide_index=True)
+        st.dataframe(lb_df, width="stretch", hide_index=True)
 
 with dashboard_tab:
-    climbs = get_climbs(climber_name)
-    boulder_best = max(
-        get_climbs(climber_name, "Boulder"),
-        key=lambda c: grade_rank("Boulder", c["grade"]),
-        default=None,
-    )
-    rope_best = max(
-        get_climbs(climber_name, "Rope"),
-        key=lambda c: grade_rank("Rope", c["grade"]),
-        default=None,
-    )
-    today_str = date.today().isoformat()
+    climbs = get_climbs(user_id)
+    boulder_best = best_climb(user_id, "Boulder")
+    rope_best = best_climb(user_id, "Rope")
+    today_str = user_now().date().isoformat()
 
     st.write("### 📊 Climb Overview")
     m_col1, m_col2, m_col3, m_col4 = st.columns(4)
     with m_col1:
         st.metric(label="Total Climbs Logged", value=len(climbs))
     with m_col2:
-        st.metric(label="Best Boulder Grade", value=boulder_best["grade"] if boulder_best else "—")
+        st.metric(label="Best Boulder Send", value=boulder_best["grade"] if boulder_best else "—")
     with m_col3:
-        st.metric(label="Best Rope Grade", value=rope_best["grade"] if rope_best else "—")
+        st.metric(label="Best Rope Send", value=rope_best["grade"] if rope_best else "—")
     with m_col4:
         st.metric(label="Logged Today", value=sum(1 for c in climbs if c["date"] == today_str))
 
@@ -263,8 +369,8 @@ with dashboard_tab:
         st.info("Log climbs to see your pyramid volume distribution!")
     else:
         pyr_disc = st.radio("Pyramid Discipline", ["Boulder", "Rope"], horizontal=True, key="pyr_disc")
-        filtered_climbs = [c for c in climbs if c["discipline"] == pyr_disc and c["status"] in ["Onsight", "Flash", "Redpoint", "Sent"]]
-        
+        filtered_climbs = [c for c in climbs if c["discipline"] == pyr_disc and c["status"] in SENT_STATUSES]
+
         if not filtered_climbs:
             st.info(f"No completed sends logged for {pyr_disc} yet.")
         else:
@@ -280,7 +386,7 @@ with dashboard_tab:
                 tooltip=["grade", "Sends"]
             ).properties(height=300)
 
-            st.altair_chart(pyramid_chart, use_container_width=True)
+            st.altair_chart(pyramid_chart, width="stretch")
 
     st.markdown("---")
 
@@ -294,61 +400,65 @@ with dashboard_tab:
             st.info("No climbs logged yet. Use the sidebar to log your first one.")
         else:
             history_df = pd.DataFrame(climbs)[
-                ["date", "discipline", "grade", "route_name", "status", "environment", "angle", "location"]
+                ["date", "discipline", "grade", "route_name", "status", "environment", "angle", "hold_type", "location"]
             ]
-            history_df.columns = ["Date", "Discipline", "Grade", "Route/Problem", "Status", "Env", "Angle", "Location"]
-            st.dataframe(history_df, use_container_width=True, hide_index=True)
+            history_df.columns = ["Date", "Discipline", "Grade", "Route/Problem", "Status", "Env", "Angle", "Holds", "Location"]
+            st.dataframe(history_df, width="stretch", hide_index=True)
+            st.download_button(
+                "⬇️ Download my climbs (CSV)", history_df.to_csv(index=False),
+                file_name="harnesssync_climbs.csv", mime="text/csv",
+            )
 
             with st.expander("🛠️ Manage / Edit / Delete Climbs"):
-                climb_options = {
-                    f"{c['date']} - {c['discipline']} {c['grade']} ({c['status']})"
-                    + (f" | {c['route_name']}" if c['route_name'] else ""): c
-                    for c in climbs
-                }
-                selected_label = st.selectbox("Select climb record to manage", list(climb_options.keys()))
-                if selected_label:
-                    target_climb = climb_options[selected_label]
+                climb_options = {c["id"]: c for c in climbs}
+                selected_id = st.selectbox(
+                    "Select climb record to manage", list(climb_options),
+                    format_func=lambda cid: (
+                        f"{climb_options[cid]['date']} - {climb_options[cid]['discipline']} "
+                        f"{climb_options[cid]['grade']} ({climb_options[cid]['status']})"
+                        + (f" | {climb_options[cid]['route_name']}" if climb_options[cid]["route_name"] else "")
+                    ),
+                )
+                if selected_id is not None:
+                    target_climb = climb_options[selected_id]
+                    # Keys include the climb id: Streamlit keeps a keyed widget's
+                    # value across reruns, so shared keys would carry climb A's
+                    # values into climb B's form and Save would overwrite B with them.
+                    k = target_climb["id"]
                     e_col1, e_col2 = st.columns(2)
                     with e_col1:
-                        edit_disc = st.selectbox("Discipline", ["Boulder", "Rope"], index=0 if target_climb["discipline"] == "Boulder" else 1, key="edit_disc")
+                        edit_disc = st.selectbox("Discipline", ["Boulder", "Rope"], index=0 if target_climb["discipline"] == "Boulder" else 1, key=f"edit_disc_{k}")
                         edit_grade_list = GRADES_BY_DISCIPLINE[edit_disc]
                         curr_g_idx = edit_grade_list.index(target_climb["grade"]) if target_climb["grade"] in edit_grade_list else 0
-                        edit_grade = st.selectbox("Grade", edit_grade_list, index=curr_g_idx, key="edit_grade")
+                        edit_grade = st.selectbox("Grade", edit_grade_list, index=curr_g_idx, key=f"edit_grade_{k}_{edit_disc}")
                         edit_status_idx = SEND_STATUSES.index(target_climb["status"]) if target_climb["status"] in SEND_STATUSES else 0
-                        edit_status = st.selectbox("Send Status", SEND_STATUSES, index=edit_status_idx, key="edit_status")
-                        edit_env = st.selectbox("Environment", ENVIRONMENTS, index=ENVIRONMENTS.index(target_climb.get("environment", "Gym")) if target_climb.get("environment") in ENVIRONMENTS else 0, key="edit_env")
+                        edit_status = st.selectbox("Send Status", SEND_STATUSES, index=edit_status_idx, key=f"edit_status_{k}")
+                        edit_env = st.selectbox("Environment", ENVIRONMENTS, index=ENVIRONMENTS.index(target_climb["environment"]) if target_climb["environment"] in ENVIRONMENTS else 0, key=f"edit_env_{k}")
                     with e_col2:
-                        edit_angle = st.selectbox("Wall Angle", WALL_ANGLES, index=WALL_ANGLES.index(target_climb.get("angle", "Vertical")) if target_climb.get("angle") in WALL_ANGLES else 1, key="edit_angle")
-                        edit_hold = st.selectbox("Hold Type", HOLD_TYPES, index=HOLD_TYPES.index(target_climb.get("hold_type", "Mixed")) if target_climb.get("hold_type") in HOLD_TYPES else 5, key="edit_hold")
-                        edit_route = st.text_input("Route / Problem Name", value=target_climb["route_name"], key="edit_route")
-                        edit_loc = st.text_input("Location", value=target_climb["location"], key="edit_loc")
+                        edit_angle = st.selectbox("Wall Angle", WALL_ANGLES, index=WALL_ANGLES.index(target_climb["angle"]) if target_climb["angle"] in WALL_ANGLES else 1, key=f"edit_angle_{k}")
+                        edit_hold = st.selectbox("Hold Type", HOLD_TYPES, index=HOLD_TYPES.index(target_climb["hold_type"]) if target_climb["hold_type"] in HOLD_TYPES else 5, key=f"edit_hold_{k}")
+                        edit_route = st.text_input("Route / Problem Name", value=target_climb["route_name"], key=f"edit_route_{k}", max_chars=ROUTE_MAX)
+                        edit_loc = st.text_input("Location", value=target_climb["location"], key=f"edit_loc_{k}", max_chars=LOCATION_MAX)
                         try:
                             default_d = datetime.strptime(target_climb["date"], "%Y-%m-%d").date()
-                        except Exception:
-                            default_d = date.today()
-                        edit_date = st.date_input("Date", value=default_d, key="edit_date")
+                        except ValueError:
+                            default_d = user_now().date()
+                        edit_date = st.date_input("Date", value=default_d, key=f"edit_date_{k}")
 
                     btn_col1, btn_col2 = st.columns(2)
                     with btn_col1:
-                        if st.button("💾 Save Changes", use_container_width=True, type="primary"):
+                        if st.button("💾 Save Changes", width="stretch", type="primary", key=f"save_{k}"):
                             update_climb(
-                                target_climb["id"],
-                                edit_disc,
-                                edit_grade,
-                                edit_status,
-                                route_name=edit_route,
-                                location=edit_loc,
-                                environment=edit_env,
-                                angle=edit_angle,
-                                hold_type=edit_hold,
-                                climb_date=edit_date.isoformat(),
+                                user_id, target_climb["id"], edit_disc, edit_grade, edit_status, edit_date.isoformat(),
+                                route_name=edit_route, location=edit_loc,
+                                environment=edit_env, angle=edit_angle, hold_type=edit_hold,
                             )
-                            st.success("Climb record updated!")
+                            flash("success", "Climb record updated!")
                             st.rerun()
                     with btn_col2:
-                        if st.button("🗑️ Delete Climb", use_container_width=True):
-                            delete_climb(target_climb["id"])
-                            st.warning("Climb record deleted.")
+                        if st.button("🗑️ Delete Climb", width="stretch", key=f"delete_{k}"):
+                            delete_climb(user_id, target_climb["id"])
+                            flash("info", "Climb record deleted.")
                             st.rerun()
 
     with col_right:
@@ -368,5 +478,5 @@ with dashboard_tab:
                 tooltip=["date", "discipline", "grade", "status", "route_name", "environment"],
             ).properties(height=360).interactive()
 
-            st.altair_chart(progression_chart, use_container_width=True)
+            st.altair_chart(progression_chart, width="stretch")
             st.caption("💡 Higher = harder within that discipline's own scale (V-scale or YDS).")

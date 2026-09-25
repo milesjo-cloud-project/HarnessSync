@@ -8,4 +8,9 @@ services:
       - ./climber_profiles:/app/climber_profiles
       # Secrets stay on the host; mounted read-only
       - ./.streamlit/secrets.toml:/app/.streamlit/secrets.toml:ro
+    # Without an [auth] section in secrets.toml the app refuses to start a
+    # session. For local testing without sign-in, uncomment this - never on a
+    # server other people can reach.
+    # environment:
+    #   HARNESSSYNC_DEV_MODE: "1"
     restart: unless-stopped

@@ -1,39 +1,52 @@
-from datetime import datetime
-import db_store
+from datetime import datetime, timedelta, timezone
+
+import sqlalchemy as sa
+
+from db_store import get_db, rows, feedback
+
+MESSAGE_MAX = 2000
+# Feedback is emailed to the developer, so cap how often one account can send it
+COOLDOWN = timedelta(minutes=2)
+DAILY_LIMIT = 5
+
+
+def _timestamp(dt):
+    return dt.isoformat(timespec="seconds")
 
 
 def load_feedback():
-    """Loads all feedback entries, newest first."""
-    with db_store.get_db() as conn:
-        cur = conn.execute("SELECT * FROM feedback ORDER BY date DESC, id DESC")
-        entries = [
-            {
-                "id": row["id"],
-                "date": row["date"],
-                "climber_name": row["climber_name"],
-                "category": row["category"],
-                "rating": row["rating"],
-                "message": row["message"],
-            }
-            for row in cur.fetchall()
-        ]
-    return entries
+    """All feedback entries, newest first."""
+    with get_db() as conn:
+        return rows(conn.execute(sa.select(feedback).order_by(feedback.c.submitted_at.desc(), feedback.c.id.desc())))
 
 
-def submit_feedback(climber_name, category, rating, message):
-    """Submits a feedback entry to SQLite."""
-    date_str = datetime.now().isoformat(timespec="minutes")
-    msg_clean = message.strip()
-    with db_store.get_db() as conn:
-        conn.execute("""
-            INSERT INTO feedback (climber_name, date, category, rating, message)
-            VALUES (?, ?, ?, ?, ?)
-        """, (climber_name, date_str, category, rating, msg_clean))
+def feedback_block_reason(user_id, now=None):
+    """None if this user may send feedback now, otherwise a message explaining why not."""
+    now = now or datetime.now(timezone.utc)
+    with get_db() as conn:
+        recent = conn.execute(
+            sa.select(feedback.c.submitted_at)
+            .where(feedback.c.user_id == user_id, feedback.c.submitted_at >= _timestamp(now - timedelta(days=1)))
+            .order_by(feedback.c.submitted_at.desc())
+        ).scalars().all()
+    if len(recent) >= DAILY_LIMIT:
+        return f"You've sent {DAILY_LIMIT} messages in the last day - thanks! Please try again tomorrow."
+    if recent and recent[0] >= _timestamp(now - COOLDOWN):
+        return "Thanks - give it a couple of minutes before sending another message."
+    return None
 
-    return {
-        "date": date_str,
-        "climber_name": climber_name,
+
+def submit_feedback(user_id, display_name, category, rating, message, now=None):
+    """Saves a feedback entry. Callers should check feedback_block_reason first."""
+    now = now or datetime.now(timezone.utc)
+    entry = {
+        "user_id": user_id,
+        "display_name": display_name,
+        "submitted_at": _timestamp(now),
         "category": category,
-        "rating": rating,
-        "message": msg_clean,
+        "rating": int(rating),
+        "message": message.strip()[:MESSAGE_MAX],
     }
+    with get_db() as conn:
+        conn.execute(feedback.insert().values(**entry))
+    return entry

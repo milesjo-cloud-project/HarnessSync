@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 
-from grades import V_GRADES, YDS_GRADES, SEND_STATUSES, BOULDER_CONVERSION, ROPE_CONVERSION
+from grades import BOULDER_CONVERSION, ROPE_CONVERSION
 
 
 def render_hardware_manual_tab():
@@ -9,14 +9,14 @@ def render_hardware_manual_tab():
     st.header("📖 Climbing Reference & Conversion Matrix")
     st.caption("International grade scale equivalencies, send definitions, and app guide.")
 
-    tab1, tab2, tab3 = st.tabs(["🔀 Grade Conversion Matrix", "🏁 Send Terminology", "📝 How to Log"])
+    tab1, tab2, tab3, tab4 = st.tabs(["🔀 Grade Conversion Matrix", "🏁 Send Terminology", "📝 How to Log", "🔒 Privacy"])
 
     with tab1:
         st.subheader("Bouldering Grade Equivalencies (V-Scale ↔ Font)")
         st.caption("V-Scale is standard in the Americas & Australia; Font (Fontainebleau) is standard in Europe.")
         boulder_df = pd.DataFrame(BOULDER_CONVERSION)
         boulder_df.columns = ["V-Scale (USA)", "Font Scale (EUR)", "Experience Level"]
-        st.dataframe(boulder_df, use_container_width=True, hide_index=True)
+        st.dataframe(boulder_df, width="stretch", hide_index=True)
 
         st.markdown("---")
 
@@ -24,7 +24,7 @@ def render_hardware_manual_tab():
         st.caption("Yosemite Decimal System (YDS) is standard in North America; French scale is international.")
         rope_df = pd.DataFrame(ROPE_CONVERSION)
         rope_df.columns = ["YDS (North America)", "French Scale (International)", "Difficulty Tier"]
-        st.dataframe(rope_df, use_container_width=True, hide_index=True)
+        st.dataframe(rope_df, width="stretch", hide_index=True)
 
     with tab2:
         st.subheader("🏁 Send Status Definitions")
@@ -49,6 +49,18 @@ def render_hardware_manual_tab():
         with col3:
             st.markdown("### 3️⃣ Analyze Pyramid & Progress")
             st.success("Check the **📊 Dashboard** for your Send Volume Pyramid chart to ensure you are building a strong pyramid base before pushing higher grades.")
+
+    with tab4:
+        st.subheader("🔒 Your Data")
+        st.markdown("""
+        - **What's stored:** your sign-in email, the display name you choose, and the climbs, projects,
+          sessions and feedback you log.
+        - **Who can see it:** your climb log, projects and sessions are visible only to you. If you opt in,
+          your **display name, best grade and send count** appear on the public leaderboard - never your email.
+        - **Feedback** you send is emailed to the developer along with your email address, so they can reply.
+        - **Your control:** hide yourself from the leaderboard, download your climbs as CSV, or permanently
+          delete your account and all its data from the 👤 menu in the sidebar.
+        """)
 
     st.markdown("---")
     st.caption("🔒 HarnessSync | Intelligent Climbing Log")

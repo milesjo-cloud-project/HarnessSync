@@ -8,5 +8,4 @@ __pycache__/
 # rebuilds the container from this repo on every push - if these stayed
 # tracked, pushing a local snapshot would overwrite whatever real users
 # have logged on the live instance since the last deploy.
-climber_profiles/personal_records.json
-climber_profiles/feedback_log.json
+climber_profiles/

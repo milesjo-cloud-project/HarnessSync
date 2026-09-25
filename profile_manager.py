@@ -1,231 +1,243 @@
-import os
-from datetime import date
+"""Climber profiles, climbs, projects and sessions.
 
-from grades import grade_rank
-import db_store
+Every function that reads or changes a climber's data takes the signed-in
+user's `user_id` and filters on it, so one account can never see or modify
+another account's rows - even with a guessed record id.
+"""
 
+import re
+from datetime import datetime, timezone
 
-def load_all_records():
-    """Loads all climber records in the legacy dictionary format for compatibility
-    with AI coach and existing callers."""
-    records = {}
-    with db_store.get_db() as conn:
-        climbs_cur = conn.execute("SELECT * FROM climbs ORDER BY date DESC, id DESC")
-        for row in climbs_cur.fetchall():
-            c = dict(row)
-            name = c["climber_name"]
-            profile = records.setdefault(name, {"climbs": [], "sessions": []})
-            profile["climbs"].append({
-                "id": c["id"],
-                "date": c["date"],
-                "discipline": c["discipline"],
-                "grade": c["grade"],
-                "status": c["status"],
-                "route_name": c["route_name"] or "",
-                "location": c["location"] or "",
-            })
+import sqlalchemy as sa
 
-        sessions_cur = conn.execute("SELECT * FROM sessions ORDER BY started_at DESC")
-        for row in sessions_cur.fetchall():
-            s = dict(row)
-            name = s["climber_name"]
-            profile = records.setdefault(name, {"climbs": [], "sessions": []})
-            profile["sessions"].append({
-                "id": s["id"],
-                "date": s["date"],
-                "started_at": s["started_at"],
-                "ended_at": s["ended_at"],
-                "duration_min": s["duration_min"],
-            })
-    return records
+from grades import grade_rank, SENT_STATUSES
+from db_store import get_db, rows, profiles, climbs, projects, sessions, feedback
+
+DISPLAY_NAME_MAX = 30
+ROUTE_MAX = 80
+LOCATION_MAX = 80
+NOTES_MAX = 500
 
 
-def get_climbs(climber_name=None, discipline=None):
-    """Retrieves logged climbs, newest first. Can filter by climber_name and/or discipline."""
-    query = "SELECT * FROM climbs WHERE 1=1"
-    params = []
-    if climber_name:
-        query += " AND climber_name = ?"
-        params.append(climber_name)
-    if discipline:
-        query += " AND discipline = ?"
-        params.append(discipline)
-    query += " ORDER BY date DESC, id DESC"
-
-    with db_store.get_db() as conn:
-        cur = conn.execute(query, params)
-        climbs = [
-            {
-                "id": row["id"],
-                "climber_name": row["climber_name"],
-                "date": row["date"],
-                "discipline": row["discipline"],
-                "grade": row["grade"],
-                "status": row["status"],
-                "route_name": row["route_name"] or "",
-                "location": row["location"] or "",
-                "environment": row["environment"] if "environment" in row.keys() else "Gym",
-                "angle": row["angle"] if "angle" in row.keys() else "Vertical",
-                "hold_type": row["hold_type"] if "hold_type" in row.keys() else "Mixed",
-            }
-            for row in cur.fetchall()
-        ]
-    return climbs
+def _clean(text, max_len):
+    """Trim, collapse runs of whitespace, and cap length."""
+    return re.sub(r"\s+", " ", (text or "")).strip()[:max_len]
 
 
-def best_climb(climber_name, discipline):
-    """The hardest logged climb for a climber in a discipline, or None."""
-    climbs = get_climbs(climber_name, discipline)
-    if not climbs:
+# ----------------- PROFILES -----------------
+def get_profile(user_id):
+    if not user_id:
         return None
-    return max(climbs, key=lambda c: grade_rank(discipline, c["grade"]))
+    with get_db() as conn:
+        found = rows(conn.execute(sa.select(profiles).where(profiles.c.user_id == user_id)))
+    return found[0] if found else None
 
 
-def log_climb(climber_name, discipline, grade, status, route_name="", location="", environment="Gym", angle="Vertical", hold_type="Mixed", climb_date=None):
-    """Appends one logged climb to the database. Returns PR alert strings if a record is set."""
-    climb_date = climb_date or date.today().isoformat()
-    route_name = route_name.strip()
-    location = location.strip()
-
-    # Determine previous best grade rank before inserting
-    existing_climbs = get_climbs(climber_name, discipline)
-    previous_best_rank = max(
-        (grade_rank(discipline, c["grade"]) for c in existing_climbs),
-        default=-1,
+def display_name_taken(display_name, exclude_user_id=None):
+    """Case-insensitive, so "Alex" and "alex" can't both be on the leaderboard."""
+    query = sa.select(profiles.c.user_id).where(
+        sa.func.lower(profiles.c.display_name) == _clean(display_name, DISPLAY_NAME_MAX).lower()
     )
-
-    with db_store.get_db() as conn:
-        conn.execute("""
-            INSERT INTO climbs (climber_name, date, discipline, grade, status, route_name, location, environment, angle, hold_type)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (climber_name, climb_date, discipline, grade, status, route_name, location, environment, angle, hold_type))
-
-    pr_alerts = []
-    if grade_rank(discipline, grade) > previous_best_rank:
-        pr_alerts.append(f"🏆 New {discipline} personal best: {grade}!")
-    return pr_alerts
+    if exclude_user_id:
+        query = query.where(profiles.c.user_id != exclude_user_id)
+    with get_db() as conn:
+        return conn.execute(query).first() is not None
 
 
-def update_climb(climb_id, discipline, grade, status, route_name="", location="", environment="Gym", angle="Vertical", hold_type="Mixed", climb_date=None):
-    """Updates an existing climb entry by ID."""
-    climb_date = climb_date or date.today().isoformat()
-    with db_store.get_db() as conn:
-        conn.execute("""
-            UPDATE climbs
-            SET discipline = ?, grade = ?, status = ?, route_name = ?, location = ?, environment = ?, angle = ?, hold_type = ?, date = ?
-            WHERE id = ?
-        """, (discipline, grade, status, route_name.strip(), location.strip(), environment, angle, hold_type, climb_date, climb_id))
+def save_profile(user_id, display_name, show_on_leaderboard=True):
+    """Creates the profile on first sign-in, updates it afterwards."""
+    display_name = _clean(display_name, DISPLAY_NAME_MAX)
+    if not display_name:
+        raise ValueError("Display name can't be empty.")
+    with get_db() as conn:
+        exists = conn.execute(sa.select(profiles.c.user_id).where(profiles.c.user_id == user_id)).first()
+        if exists:
+            conn.execute(
+                profiles.update().where(profiles.c.user_id == user_id)
+                .values(display_name=display_name, show_on_leaderboard=show_on_leaderboard)
+            )
+        else:
+            conn.execute(profiles.insert().values(
+                user_id=user_id,
+                display_name=display_name,
+                show_on_leaderboard=show_on_leaderboard,
+                created_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            ))
 
 
-def delete_climb(climb_id):
-    """Deletes a climb entry by ID."""
-    with db_store.get_db() as conn:
-        conn.execute("DELETE FROM climbs WHERE id = ?", (climb_id,))
+def delete_account(user_id):
+    """Permanently removes the profile and every row belonging to it."""
+    with get_db() as conn:
+        for table in (climbs, projects, sessions, feedback):
+            conn.execute(table.delete().where(table.c.user_id == user_id))
+        conn.execute(profiles.delete().where(profiles.c.user_id == user_id))
+
+
+# ----------------- CLIMBS -----------------
+def get_climbs(user_id, discipline=None):
+    """A climber's logged climbs, newest first. Never returns other users' data."""
+    if not user_id:
+        return []
+    query = sa.select(climbs).where(climbs.c.user_id == user_id)
+    if discipline:
+        query = query.where(climbs.c.discipline == discipline)
+    query = query.order_by(climbs.c.date.desc(), climbs.c.id.desc())
+    with get_db() as conn:
+        return rows(conn.execute(query))
+
+
+def best_climb(user_id, discipline):
+    """The hardest *sent* climb for a climber in a discipline, or None."""
+    sends = [c for c in get_climbs(user_id, discipline) if c["status"] in SENT_STATUSES]
+    return max(sends, key=lambda c: grade_rank(discipline, c["grade"]), default=None)
+
+
+def log_climb(user_id, discipline, grade, status, climb_date, route_name="", location="",
+              environment="Gym", angle="Vertical", hold_type="Mixed"):
+    """Appends one logged climb. Returns PR alert strings if it's a new best send."""
+    previous_best = best_climb(user_id, discipline)
+    previous_best_rank = grade_rank(discipline, previous_best["grade"]) if previous_best else -1
+
+    with get_db() as conn:
+        conn.execute(climbs.insert().values(
+            user_id=user_id, date=climb_date, discipline=discipline, grade=grade, status=status,
+            route_name=_clean(route_name, ROUTE_MAX), location=_clean(location, LOCATION_MAX),
+            environment=environment, angle=angle, hold_type=hold_type,
+        ))
+
+    if status in SENT_STATUSES and grade_rank(discipline, grade) > previous_best_rank:
+        return [f"🏆 New {discipline} personal best: {grade}!"]
+    return []
+
+
+def update_climb(user_id, climb_id, discipline, grade, status, climb_date, route_name="", location="",
+                 environment="Gym", angle="Vertical", hold_type="Mixed"):
+    with get_db() as conn:
+        conn.execute(
+            climbs.update()
+            .where(climbs.c.id == climb_id, climbs.c.user_id == user_id)
+            .values(
+                discipline=discipline, grade=grade, status=status, date=climb_date,
+                route_name=_clean(route_name, ROUTE_MAX), location=_clean(location, LOCATION_MAX),
+                environment=environment, angle=angle, hold_type=hold_type,
+            )
+        )
+
+
+def delete_climb(user_id, climb_id):
+    with get_db() as conn:
+        conn.execute(climbs.delete().where(climbs.c.id == climb_id, climbs.c.user_id == user_id))
 
 
 # ----------------- PROJECTS -----------------
-def log_project(climber_name, discipline, grade, route_name="", location="", environment="Gym", angle="Vertical", hold_type="Mixed", attempts=1, notes=""):
-    """Adds a new project for a climber."""
-    project_date = date.today().isoformat()
-    with db_store.get_db() as conn:
-        conn.execute("""
-            INSERT INTO projects (climber_name, date, discipline, grade, route_name, location, environment, angle, hold_type, attempts, notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (climber_name, project_date, discipline, grade, route_name.strip(), location.strip(), environment, angle, hold_type, attempts, notes.strip()))
+def log_project(user_id, discipline, grade, project_date, route_name="", location="",
+                environment="Gym", angle="Vertical", hold_type="Mixed", attempts=1, notes=""):
+    """Adds a project. If the climber already has a project with the same
+    discipline, grade and route name, adds the attempts to it instead of
+    creating a duplicate. Returns "added" or "bumped"."""
+    route_name = _clean(route_name, ROUTE_MAX)
+    with get_db() as conn:
+        if route_name:
+            existing = conn.execute(
+                sa.select(projects.c.id).where(
+                    projects.c.user_id == user_id,
+                    projects.c.discipline == discipline,
+                    projects.c.grade == grade,
+                    sa.func.lower(projects.c.route_name) == route_name.lower(),
+                )
+            ).first()
+            if existing:
+                conn.execute(
+                    projects.update().where(projects.c.id == existing.id)
+                    .values(attempts=projects.c.attempts + attempts)
+                )
+                return "bumped"
+        conn.execute(projects.insert().values(
+            user_id=user_id, date=project_date, discipline=discipline, grade=grade,
+            route_name=route_name, location=_clean(location, LOCATION_MAX),
+            environment=environment, angle=angle, hold_type=hold_type,
+            attempts=attempts, notes=(notes or "").strip()[:NOTES_MAX],
+        ))
+    return "added"
 
 
-def get_projects(climber_name=None):
-    """Retrieves active projects for a climber."""
-    query = "SELECT * FROM projects WHERE 1=1"
-    params = []
-    if climber_name:
-        query += " AND climber_name = ?"
-        params.append(climber_name)
-    query += " ORDER BY id DESC"
-
-    with db_store.get_db() as conn:
-        cur = conn.execute(query, params)
-        return [dict(r) for r in cur.fetchall()]
+def get_projects(user_id):
+    """A climber's active projects, newest first."""
+    if not user_id:
+        return []
+    query = sa.select(projects).where(projects.c.user_id == user_id).order_by(projects.c.id.desc())
+    with get_db() as conn:
+        return rows(conn.execute(query))
 
 
-def update_project(project_id, discipline, grade, route_name="", location="", environment="Gym", angle="Vertical", hold_type="Mixed", attempts=1, notes=""):
-    """Updates a project entry by ID."""
-    with db_store.get_db() as conn:
-        conn.execute("""
-            UPDATE projects
-            SET discipline = ?, grade = ?, route_name = ?, location = ?, environment = ?, angle = ?, hold_type = ?, attempts = ?, notes = ?
-            WHERE id = ?
-        """, (discipline, grade, route_name.strip(), location.strip(), environment, angle, hold_type, attempts, notes.strip(), project_id))
+def add_project_attempt(user_id, project_id):
+    with get_db() as conn:
+        conn.execute(
+            projects.update()
+            .where(projects.c.id == project_id, projects.c.user_id == user_id)
+            .values(attempts=projects.c.attempts + 1)
+        )
 
 
-def delete_project(project_id):
-    """Deletes a project by ID."""
-    with db_store.get_db() as conn:
-        conn.execute("DELETE FROM projects WHERE id = ?", (project_id,))
+def delete_project(user_id, project_id):
+    with get_db() as conn:
+        conn.execute(projects.delete().where(projects.c.id == project_id, projects.c.user_id == user_id))
 
 
-def graduate_project(project_id, send_status="Redpoint"):
-    """Converts a project into a logged climb send and deletes the project."""
-    with db_store.get_db() as conn:
-        cur = conn.execute("SELECT * FROM projects WHERE id = ?", (project_id,))
-        proj = cur.fetchone()
-        if not proj:
-            return []
-        p = dict(proj)
-
+def graduate_project(user_id, project_id, send_date, send_status="Redpoint"):
+    """Moves a project into the climb log as a send. Returns PR alerts."""
+    with get_db() as conn:
+        found = rows(conn.execute(
+            sa.select(projects).where(projects.c.id == project_id, projects.c.user_id == user_id)
+        ))
+    if not found:
+        return []
+    p = found[0]
     alerts = log_climb(
-        climber_name=p["climber_name"],
-        discipline=p["discipline"],
-        grade=p["grade"],
-        status=send_status,
-        route_name=p["route_name"],
-        location=p["location"],
-        environment=p["environment"],
-        angle=p["angle"],
-        hold_type=p["hold_type"],
-        climb_date=date.today().isoformat(),
+        user_id, p["discipline"], p["grade"], send_status, send_date,
+        route_name=p["route_name"], location=p["location"],
+        environment=p["environment"], angle=p["angle"], hold_type=p["hold_type"],
     )
-    delete_project(project_id)
+    delete_project(user_id, project_id)
     return alerts
 
 
-
-def log_session(climber_name, started_at, ended_at):
-    """Appends one completed visit session to database. Returns duration in minutes."""
+# ----------------- SESSIONS -----------------
+def log_session(user_id, started_at, ended_at):
+    """Records one completed gym/crag session. Returns duration in minutes."""
     duration_min = round((ended_at - started_at).total_seconds() / 60, 1)
-    session_date = started_at.date().isoformat()
-    start_str = started_at.isoformat(timespec="minutes")
-    end_str = ended_at.isoformat(timespec="minutes")
-
-    with db_store.get_db() as conn:
-        conn.execute("""
-            INSERT INTO sessions (climber_name, date, started_at, ended_at, duration_min)
-            VALUES (?, ?, ?, ?, ?)
-        """, (climber_name, session_date, start_str, end_str, duration_min))
-
+    with get_db() as conn:
+        conn.execute(sessions.insert().values(
+            user_id=user_id,
+            date=started_at.date().isoformat(),
+            started_at=started_at.isoformat(timespec="minutes"),
+            ended_at=ended_at.isoformat(timespec="minutes"),
+            duration_min=duration_min,
+        ))
     return duration_min
 
 
-def get_sessions(climber_name=None):
-    """Logged visit sessions, newest first."""
-    query = "SELECT * FROM sessions"
-    params = []
-    if climber_name:
-        query += " WHERE climber_name = ?"
-        params.append(climber_name)
-    query += " ORDER BY started_at DESC"
+def get_sessions(user_id):
+    """Logged sessions, newest first."""
+    if not user_id:
+        return []
+    query = sa.select(sessions).where(sessions.c.user_id == user_id).order_by(sessions.c.started_at.desc())
+    with get_db() as conn:
+        return rows(conn.execute(query))
 
-    with db_store.get_db() as conn:
-        cur = conn.execute(query, params)
-        sessions = [
-            {
-                "id": row["id"],
-                "climber_name": row["climber_name"],
-                "date": row["date"],
-                "started_at": row["started_at"],
-                "ended_at": row["ended_at"],
-                "duration_min": row["duration_min"],
-            }
-            for row in cur.fetchall()
-        ]
-    return sessions
+
+# ----------------- LEADERBOARD -----------------
+def get_leaderboard_climbs(discipline):
+    """All sends in a discipline from climbers who opted in to the leaderboard,
+    tagged with their public display name (never their email)."""
+    query = (
+        sa.select(profiles.c.display_name, climbs.c.grade, climbs.c.status)
+        .join(profiles, profiles.c.user_id == climbs.c.user_id)
+        .where(
+            climbs.c.discipline == discipline,
+            climbs.c.status.in_(SENT_STATUSES),
+            profiles.c.show_on_leaderboard.is_(True),
+        )
+    )
+    with get_db() as conn:
+        return rows(conn.execute(query))
