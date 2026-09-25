@@ -99,12 +99,20 @@ def _database_url():
         url = None
     url = url or os.environ.get("DATABASE_URL")
     if url:
-        # Neon/Supabase/Heroku hand out "postgres://", which SQLAlchemy doesn't accept
-        if url.startswith("postgres://"):
-            url = "postgresql://" + url[len("postgres://"):]
         return url
     os.makedirs(PROFILES_DIR, exist_ok=True)
     return f"sqlite:///{DEFAULT_SQLITE_PATH}"
+
+
+def _normalize_url(url):
+    """Providers hand out "postgres://" or "postgresql://". Pin the driver to
+    psycopg 3 explicitly - SQLAlchemy's default Postgres driver differs
+    between versions (psycopg2 in 2.0, psycopg in 2.1)."""
+    url = url.strip()
+    for prefix in ("postgres://", "postgresql://"):
+        if url.startswith(prefix):
+            return "postgresql+psycopg://" + url[len(prefix):]
+    return url
 
 
 def _create_engine(url):
@@ -127,7 +135,7 @@ def configure(url=None):
     global _engine
     if _engine is not None:
         _engine.dispose()
-    _engine = _create_engine(url or _database_url())
+    _engine = _create_engine(_normalize_url(url or _database_url()))
     _set_aside_legacy_tables(_engine)
     metadata.create_all(_engine)
     return _engine
