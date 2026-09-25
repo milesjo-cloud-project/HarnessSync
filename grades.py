@@ -24,6 +24,10 @@ GRADES_BY_DISCIPLINE = {
 }
 
 SEND_STATUSES = ["Onsight", "Flash", "Redpoint", "Sent", "Project", "Attempt"]
+# The statuses that mean the climb was actually completed - the only ones
+# that count toward best grades, personal records, pyramids and the leaderboard.
+SENT_STATUSES = ["Onsight", "Flash", "Redpoint", "Sent"]
+PROJECT_STATUSES = ["Project", "Attempt"]
 ENVIRONMENTS = ["Gym", "Outdoor"]
 WALL_ANGLES = ["Slab", "Vertical", "Overhang", "Roof"]
 HOLD_TYPES = ["Crimps", "Slopers", "Jugs", "Pinches", "Pockets", "Mixed"]
