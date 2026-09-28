@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "name": "HarnessSync Session",
+  "description": "Climbing session timer with attempt and send counters and a rest countdown.",
+  "appearance": {
+    "theme_color": "#38BDF8",
+    "icon": {
+      "src": "../icon.svg",
+      "type": "monochrome"
+    }
+  }
+}
