@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HarnessSync Session</title>
+  <meta name="application-name" content="HarnessSync Session">
+  <meta name="description" content="A climbing session timer for Meta Ray-Ban Display: session clock, attempt and send counters, and a rest countdown.">
+  <meta name="mrbd-web-app-capable" content="yes">
+  <link rel="stylesheet" href="glasses.css">
+  <script src="glasses.js" defer></script>
+</head>
+<body>
+  <main class="app-shell">
+    <section class="readout">
+      <p class="label" id="status" aria-live="polite">Ready</p>
+      <p class="clock" id="session-clock">0:00:00</p>
+      <p class="counts">
+        <span><strong id="attempt-count">0</strong> <span id="attempt-label">attempts</span></span>
+        <span><strong id="send-count">0</strong> <span id="send-label">sends</span></span>
+      </p>
+      <p class="rest hidden" id="rest-readout">Rest <span id="rest-clock">3:00</span></p>
+    </section>
+
+    <section class="controls">
+      <button id="attempt-btn" autofocus>+ Attempt</button>
+      <button id="send-btn">+ Send</button>
+      <button id="rest-btn">Start rest</button>
+      <button id="start-btn">Start</button>
+      <button id="rest-length-btn">Length 3:00</button>
+      <button id="reset-btn">Reset</button>
+    </section>
+  </main>
+</body>
+</html>
