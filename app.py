@@ -12,8 +12,8 @@ from grades import (
 )
 from profile_manager import (
     get_profile, save_profile, display_name_taken, delete_account,
-    log_climb, get_climbs, best_climb, log_session, delete_climb, update_climb,
-    log_project, get_projects, add_project_attempt, delete_project, graduate_project,
+    log_climb, get_climbs, best_climb, log_session, get_sessions, delete_climb, update_climb,
+    log_project, get_projects, update_project, add_project_attempt, delete_project, graduate_project,
     DISPLAY_NAME_MAX, ROUTE_MAX, LOCATION_MAX, NOTES_MAX,
 )
 from feedback_manager import submit_feedback, feedback_block_reason, MESSAGE_MAX
@@ -119,6 +119,12 @@ def render_onboarding(user_id, suggested_name):
 
 # ----------------- IDENTITY -----------------
 user_id, suggested_name = resolve_user()
+# Streamlit session state survives an OAuth logout/login in the same browser
+# tab. Don't let a timer started by the previous account carry over.
+if st.session_state.get("session_identity") != user_id:
+    st.session_state.pop("session_start", None)
+    st.session_state.pop("session_user", None)
+    st.session_state.session_identity = user_id
 profile = get_profile(user_id)
 if profile is None:
     if dev_mode() and not auth_configured():
@@ -202,7 +208,6 @@ st.sidebar.header("⏱️ Session Timer")
 if st.session_state.get("session_start") is None:
     if st.sidebar.button("▶️ Start Session", width="stretch"):
         st.session_state.session_start = user_now()
-        st.session_state.session_user = user_id
         st.rerun()
 else:
     session_start = st.session_state.session_start
@@ -210,9 +215,8 @@ else:
     start_label = session_start.strftime("%I:%M %p").lstrip("0")
     st.sidebar.caption(f"Started {start_label} · {elapsed_min:.0f} min so far")
     if st.sidebar.button("⏹ End Session", width="stretch"):
-        duration_min = log_session(st.session_state.session_user, session_start, user_now())
+        duration_min = log_session(user_id, session_start, user_now())
         st.session_state.session_start = None
-        st.session_state.session_user = None
         flash("success", f"Session logged: {duration_min:.0f} min.")
         st.rerun()
 
@@ -292,6 +296,14 @@ with projects_tab:
     if not active_projects:
         st.info("No active projects right now. Use the form above or the sidebar (set status to Project) to add one!")
     else:
+        projects_df = pd.DataFrame(active_projects)[
+            ["date", "discipline", "grade", "route_name", "location", "environment", "angle", "hold_type", "attempts", "notes"]
+        ]
+        projects_df.columns = ["Date added", "Discipline", "Grade", "Route/Problem", "Location", "Environment", "Angle", "Holds", "Attempts", "Notes"]
+        st.download_button(
+            "⬇️ Download my projects (CSV)", projects_df.to_csv(index=False),
+            file_name="harnesssync_projects.csv", mime="text/csv",
+        )
         for proj in active_projects:
             with st.container():
                 st.markdown(f"### 🧗 {proj['discipline']} {proj['grade']} - {proj['route_name'] or 'Unnamed Project'}")
@@ -308,6 +320,40 @@ with projects_tab:
                 with p_col4:
                     if proj["notes"]:
                         st.info(f"**Notes:** {proj['notes']}")
+
+                with st.expander("✏️ Edit project details"):
+                    e_disc = st.selectbox(
+                        "Discipline", ["Boulder", "Rope"],
+                        index=0 if proj["discipline"] == "Boulder" else 1,
+                        key=f"project_disc_{proj['id']}",
+                    )
+                    e_grades = GRADES_BY_DISCIPLINE[e_disc]
+                    e_grade = st.selectbox(
+                        "Grade", e_grades,
+                        index=e_grades.index(proj["grade"]) if proj["grade"] in e_grades else 0,
+                        key=f"project_grade_{proj['id']}_{e_disc}",
+                    )
+                    with st.form(f"edit_project_form_{proj['id']}"):
+                        e_route = st.text_input("Route / Problem Name", value=proj["route_name"], max_chars=ROUTE_MAX)
+                        e_location = st.text_input("Location", value=proj["location"], max_chars=LOCATION_MAX)
+                        e_env = st.selectbox("Environment", ENVIRONMENTS, index=ENVIRONMENTS.index(proj["environment"]) if proj["environment"] in ENVIRONMENTS else 0)
+                        e_angle = st.selectbox("Wall Angle", WALL_ANGLES, index=WALL_ANGLES.index(proj["angle"]) if proj["angle"] in WALL_ANGLES else 1)
+                        e_hold = st.selectbox("Hold Type", HOLD_TYPES, index=HOLD_TYPES.index(proj["hold_type"]) if proj["hold_type"] in HOLD_TYPES else 5)
+                        try:
+                            e_date_default = datetime.strptime(proj["date"], "%Y-%m-%d").date()
+                        except ValueError:
+                            e_date_default = user_now().date()
+                        e_date = st.date_input("Date added", value=e_date_default)
+                        e_attempts = st.number_input("Attempts", min_value=1, max_value=10000, value=int(proj["attempts"]))
+                        e_notes = st.text_area("Beta / Notes", value=proj["notes"], max_chars=NOTES_MAX)
+                        if st.form_submit_button("Save project details", width="stretch"):
+                            update_project(
+                                user_id, proj["id"], e_disc, e_grade, e_date.isoformat(),
+                                route_name=e_route, location=e_location, environment=e_env,
+                                angle=e_angle, hold_type=e_hold, attempts=int(e_attempts), notes=e_notes,
+                            )
+                            flash("success", "Project updated.")
+                            st.rerun()
 
                 b_col1, b_col2, b_col3 = st.columns([2, 2, 2])
                 with b_col1:
@@ -346,6 +392,7 @@ with leaderboard_tab:
 
 with dashboard_tab:
     climbs = get_climbs(user_id)
+    sessions = get_sessions(user_id)
     boulder_best = best_climb(user_id, "Boulder")
     rope_best = best_climb(user_id, "Rope")
     today_str = user_now().date().isoformat()
@@ -388,6 +435,30 @@ with dashboard_tab:
 
             st.altair_chart(pyramid_chart, width="stretch")
 
+            style_counts = pyr_df.groupby("status").size().reset_index(name="Sends")
+            style_chart = alt.Chart(style_counts).mark_bar().encode(
+                x=alt.X("status:N", title="Send style", sort=SEND_STATUSES),
+                y=alt.Y("Sends:Q", title="Sends"),
+                color=alt.Color("status:N", title="Send style"),
+                tooltip=["status", "Sends"],
+            ).properties(height=220)
+            st.write("#### Send style breakdown")
+            st.altair_chart(style_chart, width="stretch")
+
+    st.markdown("---")
+
+    st.write("### ⏱️ Session History")
+    if not sessions:
+        st.info("Completed sessions you time will appear here.")
+    else:
+        sessions_df = pd.DataFrame(sessions)[["date", "started_at", "ended_at", "duration_min"]]
+        sessions_df.columns = ["Date", "Started", "Ended", "Duration (min)"]
+        st.dataframe(sessions_df, width="stretch", hide_index=True)
+        st.download_button(
+            "⬇️ Download my sessions (CSV)", sessions_df.to_csv(index=False),
+            file_name="harnesssync_sessions.csv", mime="text/csv",
+        )
+
     st.markdown("---")
 
     # ----------------- WORKSPACE SPLIT -----------------
@@ -400,9 +471,9 @@ with dashboard_tab:
             st.info("No climbs logged yet. Use the sidebar to log your first one.")
         else:
             history_df = pd.DataFrame(climbs)[
-                ["date", "discipline", "grade", "route_name", "status", "environment", "angle", "hold_type", "location"]
+                ["date", "discipline", "grade", "route_name", "status", "environment", "angle", "hold_type", "location", "notes"]
             ]
-            history_df.columns = ["Date", "Discipline", "Grade", "Route/Problem", "Status", "Env", "Angle", "Holds", "Location"]
+            history_df.columns = ["Date", "Discipline", "Grade", "Route/Problem", "Status", "Env", "Angle", "Holds", "Location", "Notes"]
             st.dataframe(history_df, width="stretch", hide_index=True)
             st.download_button(
                 "⬇️ Download my climbs (CSV)", history_df.to_csv(index=False),
@@ -439,6 +510,7 @@ with dashboard_tab:
                         edit_hold = st.selectbox("Hold Type", HOLD_TYPES, index=HOLD_TYPES.index(target_climb["hold_type"]) if target_climb["hold_type"] in HOLD_TYPES else 5, key=f"edit_hold_{k}")
                         edit_route = st.text_input("Route / Problem Name", value=target_climb["route_name"], key=f"edit_route_{k}", max_chars=ROUTE_MAX)
                         edit_loc = st.text_input("Location", value=target_climb["location"], key=f"edit_loc_{k}", max_chars=LOCATION_MAX)
+                        edit_notes = st.text_area("Notes / Beta", value=target_climb.get("notes", ""), key=f"edit_notes_{k}", max_chars=NOTES_MAX)
                         try:
                             default_d = datetime.strptime(target_climb["date"], "%Y-%m-%d").date()
                         except ValueError:
@@ -451,7 +523,7 @@ with dashboard_tab:
                             update_climb(
                                 user_id, target_climb["id"], edit_disc, edit_grade, edit_status, edit_date.isoformat(),
                                 route_name=edit_route, location=edit_loc,
-                                environment=edit_env, angle=edit_angle, hold_type=edit_hold,
+                                environment=edit_env, angle=edit_angle, hold_type=edit_hold, notes=edit_notes,
                             )
                             flash("success", "Climb record updated!")
                             st.rerun()

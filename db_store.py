@@ -49,6 +49,7 @@ climbs = sa.Table(
     sa.Column("environment", sa.String(20), nullable=False, default="Gym"),
     sa.Column("angle", sa.String(20), nullable=False, default="Vertical"),
     sa.Column("hold_type", sa.String(20), nullable=False, default="Mixed"),
+    sa.Column("notes", sa.Text, nullable=False, default=""),
 )
 
 projects = sa.Table(
@@ -138,7 +139,19 @@ def configure(url=None):
     _engine = _create_engine(_normalize_url(url or _database_url()))
     _set_aside_legacy_tables(_engine)
     metadata.create_all(_engine)
+    _add_missing_columns(_engine)
     return _engine
+
+
+def _add_missing_columns(engine):
+    """Apply small additive migrations for columns added after initial setup."""
+    inspector = sa.inspect(engine)
+    if "climbs" not in inspector.get_table_names():
+        return
+    columns = {column["name"] for column in inspector.get_columns("climbs")}
+    if "notes" not in columns:
+        with engine.begin() as conn:
+            conn.execute(sa.text("ALTER TABLE climbs ADD COLUMN notes TEXT NOT NULL DEFAULT ''"))
 
 
 def _set_aside_legacy_tables(engine):
