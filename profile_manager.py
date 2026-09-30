@@ -93,7 +93,7 @@ def best_climb(user_id, discipline):
 
 
 def log_climb(user_id, discipline, grade, status, climb_date, route_name="", location="",
-              environment="Gym", angle="Vertical", hold_type="Mixed"):
+              environment="Gym", angle="Vertical", hold_type="Mixed", notes=""):
     """Appends one logged climb. Returns PR alert strings if it's a new best send."""
     previous_best = best_climb(user_id, discipline)
     previous_best_rank = grade_rank(discipline, previous_best["grade"]) if previous_best else -1
@@ -103,6 +103,7 @@ def log_climb(user_id, discipline, grade, status, climb_date, route_name="", loc
             user_id=user_id, date=climb_date, discipline=discipline, grade=grade, status=status,
             route_name=_clean(route_name, ROUTE_MAX), location=_clean(location, LOCATION_MAX),
             environment=environment, angle=angle, hold_type=hold_type,
+            notes=(notes or "").strip()[:NOTES_MAX],
         ))
 
     if status in SENT_STATUSES and grade_rank(discipline, grade) > previous_best_rank:
@@ -111,7 +112,7 @@ def log_climb(user_id, discipline, grade, status, climb_date, route_name="", loc
 
 
 def update_climb(user_id, climb_id, discipline, grade, status, climb_date, route_name="", location="",
-                 environment="Gym", angle="Vertical", hold_type="Mixed"):
+                 environment="Gym", angle="Vertical", hold_type="Mixed", notes=""):
     with get_db() as conn:
         conn.execute(
             climbs.update()
@@ -120,6 +121,7 @@ def update_climb(user_id, climb_id, discipline, grade, status, climb_date, route
                 discipline=discipline, grade=grade, status=status, date=climb_date,
                 route_name=_clean(route_name, ROUTE_MAX), location=_clean(location, LOCATION_MAX),
                 environment=environment, angle=angle, hold_type=hold_type,
+                notes=(notes or "").strip()[:NOTES_MAX],
             )
         )
 
@@ -170,6 +172,21 @@ def get_projects(user_id):
         return rows(conn.execute(query))
 
 
+def update_project(user_id, project_id, discipline, grade, project_date, route_name="", location="",
+                   environment="Gym", angle="Vertical", hold_type="Mixed", attempts=1, notes=""):
+    with get_db() as conn:
+        conn.execute(
+            projects.update()
+            .where(projects.c.id == project_id, projects.c.user_id == user_id)
+            .values(
+                discipline=discipline, grade=grade, date=project_date,
+                route_name=_clean(route_name, ROUTE_MAX), location=_clean(location, LOCATION_MAX),
+                environment=environment, angle=angle, hold_type=hold_type,
+                attempts=max(1, int(attempts)), notes=(notes or "").strip()[:NOTES_MAX],
+            )
+        )
+
+
 def add_project_attempt(user_id, project_id):
     with get_db() as conn:
         conn.execute(
@@ -197,6 +214,7 @@ def graduate_project(user_id, project_id, send_date, send_status="Redpoint"):
         user_id, p["discipline"], p["grade"], send_status, send_date,
         route_name=p["route_name"], location=p["location"],
         environment=p["environment"], angle=p["angle"], hold_type=p["hold_type"],
+        notes=p["notes"],
     )
     delete_project(user_id, project_id)
     return alerts
@@ -231,7 +249,7 @@ def get_leaderboard_climbs(discipline):
     """All sends in a discipline from climbers who opted in to the leaderboard,
     tagged with their public display name (never their email)."""
     query = (
-        sa.select(profiles.c.display_name, climbs.c.grade, climbs.c.status)
+        sa.select(profiles.c.user_id, profiles.c.display_name, climbs.c.grade, climbs.c.status)
         .join(profiles, profiles.c.user_id == climbs.c.user_id)
         .where(
             climbs.c.discipline == discipline,

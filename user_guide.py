@@ -58,8 +58,8 @@ def render_hardware_manual_tab():
         - **Who can see it:** your climb log, projects and sessions are visible only to you. If you opt in,
           your **display name, best grade and send count** appear on the public leaderboard - never your email.
         - **Feedback** you send is emailed to the developer along with your email address, so they can reply.
-        - **Your control:** hide yourself from the leaderboard, download your climbs as CSV, or permanently
-          delete your account and all its data from the 👤 menu in the sidebar.
+        - **Your control:** hide yourself from the leaderboard, download your climbs, projects and sessions
+          as CSV files, or permanently delete your account and all its data from the 👤 menu in the sidebar.
         """)
 
     st.markdown("---")
