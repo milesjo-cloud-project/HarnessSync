@@ -74,3 +74,5 @@ anyone could act as anyone.
 - **Phone app waitlist:** to see how many people want an iPhone/Android app and why, run
   `DATABASE_URL="<your Neon URL>" python waitlist_report.py` from the repo. The
   emails are in the `waitlist` table's `user_id` column if you want to contact people.
+  To fold in the home page survey, download the Google Form's response sheet as CSV and add
+  `--survey responses.csv`. Keep that sheet's sharing **Restricted**.

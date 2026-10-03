@@ -56,6 +56,12 @@ def leave(user_id):
         conn.execute(waitlist.delete().where(waitlist.c.user_id == user_id))
 
 
+def emails():
+    """Everyone on the waitlist. user_id is the Google sign-in email."""
+    with get_db() as conn:
+        return conn.execute(sa.select(waitlist.c.user_id)).scalars().all()
+
+
 def summary():
     """Totals for deciding whether a native app is worth building."""
     with get_db() as conn:

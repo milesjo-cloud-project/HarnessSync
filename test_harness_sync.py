@@ -13,6 +13,7 @@ import profile_manager
 import feedback_manager
 import leaderboard_engine
 import waitlist_manager
+import waitlist_report
 
 TODAY = "2026-09-25"
 
@@ -165,6 +166,31 @@ class TestHarnessSync(unittest.TestCase):
         self.assertIsNone(waitlist_manager.get_entry(a))
         with self.assertRaises(ValueError):
             waitlist_manager.join(a, "Windows Phone")
+
+    def test_survey_report(self):
+        path = os.path.join(self.test_dir, "responses.csv")
+        with open(path, "w", newline="", encoding="utf-8") as f:
+            f.write(
+                "Timestamp,Email Address,What is your primary climbing discipline?,"
+                "How would you rate your current climbing experience level?,"
+                "Which mobile platform do you primarily use?,"
+                "Which features would you find most useful in a climbing app?,"
+                "How likely are you to use a dedicated social feature to find climbing partners?,"
+                "What is your biggest pain point with current climbing apps or guidebooks?\n"
+                '10/2/2026 9:00:00,a@example.com,Bouldering,Beginner,Apple iOS,"Route tracking and logbook, Offline guidebook storage",4,Too many ads\n'
+                '10/2/2026 9:05:00,,Sport Climbing,Advanced,Android,Offline guidebook storage,2,\n'
+                '10/2/2026 9:10:00,B@Example.com,Gym Climbing Only,Intermediate,Apple iOS,,5,Slow to log\n'
+            )
+        self._user("b@example.com")
+        waitlist_manager.join("b@example.com", "iPhone")
+
+        v = waitlist_report.summarize_survey(waitlist_report.load_survey(path), waitlist_manager.emails())
+        self.assertEqual((v["total"], v["duplicates"]), (2, 1))  # b@ already on the in-app waitlist
+        self.assertEqual((v["ios"], v["android"]), (1, 1))
+        self.assertEqual(v["features"]["Offline guidebook storage"], 2)
+        self.assertEqual(v["partner_avg"], 3.0)
+        self.assertEqual(v["pains"], ["Too many ads"])
+        self.assertEqual(waitlist_report.summarize_survey([])["total"], 0)
 
     def test_session_timer_survives_reload_and_logs_once(self):
         user = self._user("alice@example.com")
