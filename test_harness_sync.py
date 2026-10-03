@@ -12,6 +12,8 @@ import db_store
 import profile_manager
 import feedback_manager
 import leaderboard_engine
+import waitlist_manager
+import waitlist_report
 
 TODAY = "2026-09-25"
 
@@ -133,11 +135,90 @@ class TestHarnessSync(unittest.TestCase):
         profile_manager.log_climb(user, "Boulder", "V3", "Sent", TODAY)
         profile_manager.log_project(user, "Boulder", "V6", TODAY)
         feedback_manager.submit_feedback(user, "alice", "Bug", 3, "hi")
+        waitlist_manager.join(user, "iPhone")
         profile_manager.delete_account(user)
         self.assertIsNone(profile_manager.get_profile(user))
         self.assertEqual(profile_manager.get_climbs(user), [])
         self.assertEqual(profile_manager.get_projects(user), [])
         self.assertEqual(feedback_manager.load_feedback(), [])
+        self.assertIsNone(waitlist_manager.get_entry(user))
+
+    def test_waitlist(self):
+        a = self._user("a@example.com")
+        b = self._user("b@example.com")
+        offline, timer = waitlist_manager.REASONS[0], waitlist_manager.REASONS[2]
+        waitlist_manager.join(a, "iPhone", [offline, "not a real reason"], note="  offline pls  ")
+        waitlist_manager.join(b, "Both", [offline, timer])
+
+        entry = waitlist_manager.get_entry(a)
+        self.assertEqual(entry["wants"], offline)
+        self.assertEqual(entry["note"], "offline pls")
+
+        # Joining again updates answers instead of adding a second row
+        waitlist_manager.join(a, "Android")
+        s = waitlist_manager.summary()
+        self.assertEqual(s["total"], 2)
+        self.assertEqual((s["ios"], s["android"]), (1, 2))
+        self.assertEqual(s["by_reason"][offline], 1)
+        self.assertEqual(s["by_reason"][timer], 1)
+
+        waitlist_manager.leave(a)
+        self.assertIsNone(waitlist_manager.get_entry(a))
+        with self.assertRaises(ValueError):
+            waitlist_manager.join(a, "Windows Phone")
+
+    def test_survey_report(self):
+        path = os.path.join(self.test_dir, "responses.csv")
+        with open(path, "w", newline="", encoding="utf-8") as f:
+            f.write(
+                "Timestamp,Email Address,What is your primary climbing discipline?,"
+                "How would you rate your current climbing experience level?,"
+                "Which mobile platform do you primarily use?,"
+                "Which features would you find most useful in a climbing app?,"
+                "How likely are you to use a dedicated social feature to find climbing partners?,"
+                "What is your biggest pain point with current climbing apps or guidebooks?\n"
+                '10/2/2026 9:00:00,a@example.com,Bouldering,Beginner,Apple iOS,"Route tracking and logbook, Offline guidebook storage",4,Too many ads\n'
+                '10/2/2026 9:05:00,,Sport Climbing,Advanced,Android,Offline guidebook storage,2,\n'
+                '10/2/2026 9:10:00,B@Example.com,Gym Climbing Only,Intermediate,Apple iOS,,5,Slow to log\n'
+            )
+        self._user("b@example.com")
+        waitlist_manager.join("b@example.com", "iPhone")
+
+        v = waitlist_report.summarize_survey(waitlist_report.load_survey(path), waitlist_manager.emails())
+        self.assertEqual((v["total"], v["duplicates"]), (2, 1))  # b@ already on the in-app waitlist
+        self.assertEqual((v["ios"], v["android"]), (1, 1))
+        self.assertEqual(v["features"]["Offline guidebook storage"], 2)
+        self.assertEqual(v["partner_avg"], 3.0)
+        self.assertEqual(v["pains"], ["Too many ads"])
+        self.assertEqual(waitlist_report.summarize_survey([])["total"], 0)
+
+    def test_session_timer_survives_reload_and_logs_once(self):
+        user = self._user("alice@example.com")
+        start = datetime(2026, 9, 25, 18, 0, tzinfo=timezone(timedelta(hours=-6)))
+        self.assertIsNone(profile_manager.active_session_start(user))
+
+        profile_manager.start_session_timer(user, start)
+        # A fresh page load only has the database to go on
+        self.assertEqual(profile_manager.active_session_start(user), start)
+
+        self.assertEqual(profile_manager.end_session_timer(user, start + timedelta(minutes=90)), 90.0)
+        self.assertIsNone(profile_manager.end_session_timer(user, start + timedelta(minutes=91)))
+        self.assertEqual(len(profile_manager.get_sessions(user)), 1)
+        self.assertIsNone(profile_manager.active_session_start(user))
+
+    def test_new_columns_added_to_existing_database(self):
+        old_path = os.path.join(self.test_dir, "old.db")
+        conn = sqlite3.connect(old_path)
+        conn.execute("CREATE TABLE profiles (user_id VARCHAR(320) PRIMARY KEY, display_name VARCHAR(40) NOT NULL, "
+                     "show_on_leaderboard BOOLEAN NOT NULL, created_at VARCHAR(32) NOT NULL)")
+        conn.execute("INSERT INTO profiles VALUES ('alice@example.com', 'Alice', 1, '2026-09-25')")
+        conn.commit()
+        conn.close()
+
+        db_store.configure(f"sqlite:///{old_path}")
+        self.assertIsNone(profile_manager.active_session_start("alice@example.com"))
+        profile_manager.start_session_timer("alice@example.com", datetime(2026, 9, 25, 18, 0, tzinfo=timezone.utc))
+        self.assertIsNotNone(profile_manager.active_session_start("alice@example.com"))
 
     def test_feedback_manager(self):
         entry = feedback_manager.submit_feedback("bob@example.com", "Bob", "Feature Idea", 5, "Add route tags!")
