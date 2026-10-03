@@ -12,7 +12,8 @@ from grades import (
 )
 from profile_manager import (
     get_profile, save_profile, display_name_taken, delete_account,
-    log_climb, get_climbs, best_climb, log_session, get_sessions, delete_climb, update_climb,
+    log_climb, get_climbs, best_climb, get_sessions, delete_climb, update_climb,
+    start_session_timer, active_session_start, end_session_timer,
     log_project, get_projects, update_project, add_project_attempt, delete_project, graduate_project,
     DISPLAY_NAME_MAX, ROUTE_MAX, LOCATION_MAX, NOTES_MAX,
 )
@@ -20,6 +21,7 @@ from feedback_manager import submit_feedback, feedback_block_reason, MESSAGE_MAX
 from user_guide import render_hardware_manual_tab
 from leaderboard_engine import compile_leaderboard
 import notifications
+import waitlist_manager
 
 st.set_page_config(page_title="HarnessSync | Climbing Intel", layout="wide")
 
@@ -53,6 +55,17 @@ def user_tz():
 
 def user_now():
     return datetime.now(user_tz())
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def cached_leaderboard(discipline):
+    """Shared by every visitor, so the leaderboard isn't rebuilt on each click.
+    Anything that can change it calls leaderboard_changed()."""
+    return compile_leaderboard(discipline)
+
+
+def leaderboard_changed():
+    cached_leaderboard.clear()
 
 
 def flash(kind, message=""):
@@ -119,12 +132,6 @@ def render_onboarding(user_id, suggested_name):
 
 # ----------------- IDENTITY -----------------
 user_id, suggested_name = resolve_user()
-# Streamlit session state survives an OAuth logout/login in the same browser
-# tab. Don't let a timer started by the previous account carry over.
-if st.session_state.get("session_identity") != user_id:
-    st.session_state.pop("session_start", None)
-    st.session_state.pop("session_user", None)
-    st.session_state.session_identity = user_id
 profile = get_profile(user_id)
 if profile is None:
     if dev_mode() and not auth_configured():
@@ -150,6 +157,7 @@ with st.sidebar.expander(f"👤 {display_name}"):
                 st.warning("That name is taken - try another.")
             else:
                 save_profile(user_id, new_name, new_show)
+                leaderboard_changed()
                 flash("success", "Profile updated.")
                 st.rerun()
     if auth_configured():
@@ -160,6 +168,7 @@ with st.sidebar.expander(f"👤 {display_name}"):
     confirm_delete = st.checkbox("I understand this permanently deletes all my climbs, projects and sessions")
     if st.button("Delete my account & data", disabled=not confirm_delete, width="stretch"):
         delete_account(user_id)
+        leaderboard_changed()
         st.session_state.clear()
         if auth_configured():
             st.logout()
@@ -195,6 +204,7 @@ if submitted:
             route_name=route_name, location=location,
             environment=environment, angle=angle, hold_type=hold_type,
         )
+        leaderboard_changed()
         flash("success", f"Logged {discipline} {grade} ({status}).")
         for alert in pr_alerts:
             flash("balloons")
@@ -205,28 +215,62 @@ if submitted:
 st.sidebar.markdown("---")
 st.sidebar.header("⏱️ Session Timer")
 
-if st.session_state.get("session_start") is None:
+session_start = active_session_start(user_id)
+if session_start is None:
     if st.sidebar.button("▶️ Start Session", width="stretch"):
-        st.session_state.session_start = user_now()
+        start_session_timer(user_id, user_now())
         st.rerun()
 else:
-    session_start = st.session_state.session_start
+    session_start = session_start.astimezone(user_tz())
     elapsed_min = (user_now() - session_start).total_seconds() / 60
     start_label = session_start.strftime("%I:%M %p").lstrip("0")
     st.sidebar.caption(f"Started {start_label} · {elapsed_min:.0f} min so far")
     if st.sidebar.button("⏹ End Session", width="stretch"):
-        duration_min = log_session(user_id, session_start, user_now())
-        st.session_state.session_start = None
-        flash("success", f"Session logged: {duration_min:.0f} min.")
+        duration_min = end_session_timer(user_id, user_now())
+        if duration_min is not None:
+            flash("success", f"Session logged: {duration_min:.0f} min.")
         st.rerun()
 
 # ----------------- MAIN PANEL HEADER -----------------
 st.title("🧗 HarnessSync")
 st.subheader("Climb Logging, Volume Pyramids & Project Tracking")
 
-dashboard_tab, projects_tab, leaderboard_tab, user_feedback_tab, guide_tab = st.tabs(
-    ["📊 Dashboard", "🎯 Projects", "🏆 Leaderboard", "💬 Feedback", "📖 Guide & Reference"]
+dashboard_tab, projects_tab, leaderboard_tab, mobile_tab, user_feedback_tab, guide_tab = st.tabs(
+    ["📊 Dashboard", "🎯 Projects", "🏆 Leaderboard", "📱 Phone App", "💬 Feedback", "📖 Guide & Reference"]
 )
+
+with mobile_tab:
+    st.header("📱 HarnessSync for iPhone & Android")
+    st.write(
+        "We're deciding whether to build a dedicated phone app. Join the waitlist to get it first - "
+        "and tell us what would make it worth installing. Signing up is free and you can leave any time."
+    )
+    entry = waitlist_manager.get_entry(user_id)
+    if entry:
+        st.success(f"You're on the waitlist ({entry['platform']}). We'll email {user_id} when it's ready."
+                   if auth_configured() else f"You're on the waitlist ({entry['platform']}).")
+
+    with st.form("waitlist_form"):
+        platform = st.radio(
+            "Which phone would you use it on?", waitlist_manager.PLATFORMS, horizontal=True,
+            index=waitlist_manager.PLATFORMS.index(entry["platform"]) if entry else 0,
+        )
+        wants = st.multiselect(
+            "What would make a phone app worth it over the website? (optional)", waitlist_manager.REASONS,
+            default=[w.strip() for w in entry["wants"].split(",") if w.strip() in waitlist_manager.REASONS] if entry else [],
+        )
+        note = st.text_area("Anything else you'd want in it? (optional)",
+                            value=entry["note"] if entry else "", max_chars=waitlist_manager.NOTE_MAX)
+        if st.form_submit_button("Update my answers" if entry else "📱 Join the waitlist",
+                                 type="primary", width="stretch"):
+            waitlist_manager.join(user_id, platform, wants, note)
+            flash("success", "Answers updated." if entry else "You're on the waitlist - thanks!")
+            st.rerun()
+
+    if entry and st.button("Leave the waitlist"):
+        waitlist_manager.leave(user_id)
+        flash("info", "You've left the waitlist.")
+        st.rerun()
 
 with guide_tab:
     render_hardware_manual_tab()
@@ -359,6 +403,7 @@ with projects_tab:
                 with b_col1:
                     if st.button("🎉 SENT IT! (Graduate)", key=f"grad_{proj['id']}", width="stretch", type="primary"):
                         alerts = graduate_project(user_id, proj["id"], user_now().date().isoformat(), send_status="Redpoint")
+                        leaderboard_changed()
                         flash("success", "Graduated project to send history!")
                         for a in alerts:
                             flash("balloons")
@@ -380,7 +425,7 @@ with leaderboard_tab:
     st.caption("Ranked by hardest send (Onsight, Flash, Redpoint or Sent) within each discipline. "
                "You can hide yourself from the leaderboard in the 👤 account menu.")
     lb_discipline = st.radio("Discipline", ["Boulder", "Rope"], horizontal=True, key="leaderboard_discipline")
-    lb_df = compile_leaderboard(lb_discipline)
+    lb_df = cached_leaderboard(lb_discipline)
 
     if lb_df.empty:
         st.info(f"No {lb_discipline} sends logged yet. Log one to get on the board.")
@@ -424,11 +469,12 @@ with dashboard_tab:
             pyr_df = pd.DataFrame(filtered_climbs)
             pyr_df["Rank"] = pyr_df["grade"].apply(lambda g: grade_rank(pyr_disc, g))
             grade_counts = pyr_df.groupby(["grade", "Rank"]).size().reset_index(name="Sends")
-            grade_counts = grade_counts.sort_values("Rank", ascending=True)
+            # Hardest grade on top, so a healthy base of easier sends reads as a pyramid
+            hardest_first = grade_counts.sort_values("Rank", ascending=False)["grade"].tolist()
 
             pyramid_chart = alt.Chart(grade_counts).mark_bar().encode(
                 x=alt.X("Sends:Q", title="Total Sends"),
-                y=alt.Y("grade:N", title="Grade", sort="-x"),
+                y=alt.Y("grade:N", title="Grade", sort=hardest_first),
                 color=alt.Color("Sends:Q", scale=alt.Scale(scheme="blues")),
                 tooltip=["grade", "Sends"]
             ).properties(height=300)
@@ -525,11 +571,13 @@ with dashboard_tab:
                                 route_name=edit_route, location=edit_loc,
                                 environment=edit_env, angle=edit_angle, hold_type=edit_hold, notes=edit_notes,
                             )
+                            leaderboard_changed()
                             flash("success", "Climb record updated!")
                             st.rerun()
                     with btn_col2:
                         if st.button("🗑️ Delete Climb", width="stretch", key=f"delete_{k}"):
                             delete_climb(user_id, target_climb["id"])
+                            leaderboard_changed()
                             flash("info", "Climb record deleted.")
                             st.rerun()
 

@@ -71,3 +71,6 @@ anyone could act as anyone.
   The next visitor sees a "wake up" button for a few seconds. Data is unaffected.
 - **Backups:** Neon keeps point-in-time history on the free tier (see *Restore* in its dashboard).
 - **Feedback email** is rate-limited per user (one message per 2 minutes, 5 per day).
+- **Phone app waitlist:** to see how many people want an iPhone/Android app and why, run
+  `DATABASE_URL="<your Neon URL>" python waitlist_report.py` from the repo. The
+  emails are in the `waitlist` table's `user_id` column if you want to contact people.

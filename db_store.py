@@ -34,6 +34,9 @@ profiles = sa.Table(
     sa.Column("display_name", sa.String(40), nullable=False),
     sa.Column("show_on_leaderboard", sa.Boolean, nullable=False, default=True),
     sa.Column("created_at", sa.String(32), nullable=False),
+    # Start time of a running session timer, so it survives a page reload
+    # (phones often reload a backgrounded tab mid-session). NULL when idle.
+    sa.Column("active_session_started", sa.String(32), nullable=True),
 )
 
 climbs = sa.Table(
@@ -87,6 +90,17 @@ feedback = sa.Table(
     sa.Column("category", sa.String(20), nullable=False),
     sa.Column("rating", sa.Integer, nullable=False),
     sa.Column("message", sa.Text, nullable=False),
+)
+
+# Signed-in users who want a native phone app. One row per account, so the
+# count is a count of real (Google-verified) people, not form submissions.
+waitlist = sa.Table(
+    "waitlist", metadata,
+    sa.Column("user_id", sa.String(320), primary_key=True),
+    sa.Column("platform", sa.String(20), nullable=False),   # iPhone / Android / Both
+    sa.Column("wants", sa.String(300), nullable=False, default=""),  # comma-separated reasons
+    sa.Column("note", sa.Text, nullable=False, default=""),
+    sa.Column("joined_at", sa.String(32), nullable=False),  # UTC ISO timestamp
 )
 
 _engine = None
@@ -146,12 +160,17 @@ def configure(url=None):
 def _add_missing_columns(engine):
     """Apply small additive migrations for columns added after initial setup."""
     inspector = sa.inspect(engine)
-    if "climbs" not in inspector.get_table_names():
-        return
-    columns = {column["name"] for column in inspector.get_columns("climbs")}
-    if "notes" not in columns:
-        with engine.begin() as conn:
-            conn.execute(sa.text("ALTER TABLE climbs ADD COLUMN notes TEXT NOT NULL DEFAULT ''"))
+    tables = set(inspector.get_table_names())
+    additions = [
+        ("climbs", "notes", "TEXT NOT NULL DEFAULT ''"),
+        ("profiles", "active_session_started", "VARCHAR(32)"),
+    ]
+    for table, column, ddl in additions:
+        if table not in tables:
+            continue
+        if column not in {c["name"] for c in inspector.get_columns(table)}:
+            with engine.begin() as conn:
+                conn.execute(sa.text(f"ALTER TABLE {table} ADD COLUMN {column} {ddl}"))
 
 
 def _set_aside_legacy_tables(engine):
