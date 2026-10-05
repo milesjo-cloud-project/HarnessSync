@@ -20,7 +20,8 @@ from contextlib import contextmanager
 
 import sqlalchemy as sa
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# Repo root (one level up from this package), where climber_profiles/ lives
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PROFILES_DIR = os.path.join(BASE_DIR, "climber_profiles")
 DEFAULT_SQLITE_PATH = os.path.join(PROFILES_DIR, "harnesssync.db")
 

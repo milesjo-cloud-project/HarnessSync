@@ -1,7 +1,7 @@
 import pandas as pd
 
-from grades import grade_rank
-from profile_manager import get_leaderboard_climbs
+from harnesssync.grades import grade_rank
+from harnesssync.profile_manager import get_leaderboard_climbs
 
 
 def compile_leaderboard(discipline):

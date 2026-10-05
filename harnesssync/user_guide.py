@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 
-from grades import BOULDER_CONVERSION, ROPE_CONVERSION
+from harnesssync.grades import BOULDER_CONVERSION, ROPE_CONVERSION
 
 
 def render_hardware_manual_tab():

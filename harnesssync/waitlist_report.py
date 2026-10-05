@@ -3,7 +3,7 @@
 Uses the same database the app does, so point it at production with
 DATABASE_URL (the Neon URL from your Streamlit Cloud secrets):
 
-    DATABASE_URL="postgresql://..." python waitlist_report.py
+    DATABASE_URL="postgresql://..." python -m harnesssync.waitlist_report
 
 With no DATABASE_URL (and no .streamlit/secrets.toml [database]) it reads
 the local SQLite file.
@@ -11,7 +11,7 @@ the local SQLite file.
 To include the Google Form survey, download its response sheet as CSV
 (File > Download > Comma-separated values) and pass it in:
 
-    python waitlist_report.py --survey "responses.csv"
+    python -m harnesssync.waitlist_report --survey "responses.csv"
 
 Keep that sheet's sharing set to Restricted - it holds respondents' answers.
 """
@@ -20,7 +20,7 @@ import argparse
 import csv
 from collections import Counter
 
-import waitlist_manager
+from harnesssync import waitlist_manager
 
 # Matched against the sheet's column headers (the form's question titles),
 # loosely, so small wording edits to the form don't break the report.

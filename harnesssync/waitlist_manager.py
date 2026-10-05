@@ -2,14 +2,14 @@
 
 Only signed-in users can join, so every row is a real Google account - the
 count is a trustworthy signal of demand rather than a pile of form spam.
-Run `python waitlist_report.py` to see the numbers.
+Run `python -m harnesssync.waitlist_report` to see the numbers.
 """
 
 from datetime import datetime, timezone
 
 import sqlalchemy as sa
 
-from db_store import get_db, rows, waitlist
+from harnesssync.db_store import get_db, rows, waitlist
 
 PLATFORMS = ["iPhone", "Android", "Both"]
 # What would make a phone app worth installing over the website. Answers

@@ -7,13 +7,13 @@ import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
 
-from grades import grade_rank, YDS_GRADES
-import db_store
-import profile_manager
-import feedback_manager
-import leaderboard_engine
-import waitlist_manager
-import waitlist_report
+from harnesssync.grades import grade_rank, YDS_GRADES
+from harnesssync import db_store
+from harnesssync import profile_manager
+from harnesssync import feedback_manager
+from harnesssync import leaderboard_engine
+from harnesssync import waitlist_manager
+from harnesssync import waitlist_report
 
 TODAY = "2026-09-25"
 
