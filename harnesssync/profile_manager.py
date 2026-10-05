@@ -86,10 +86,15 @@ def get_climbs(user_id, discipline=None):
         return rows(conn.execute(query))
 
 
+def best_send(climb_list, discipline):
+    """The hardest *sent* climb in a discipline from an already-loaded list, or None."""
+    sends = [c for c in climb_list if c["discipline"] == discipline and c["status"] in SENT_STATUSES]
+    return max(sends, key=lambda c: grade_rank(discipline, c["grade"]), default=None)
+
+
 def best_climb(user_id, discipline):
     """The hardest *sent* climb for a climber in a discipline, or None."""
-    sends = [c for c in get_climbs(user_id, discipline) if c["status"] in SENT_STATUSES]
-    return max(sends, key=lambda c: grade_rank(discipline, c["grade"]), default=None)
+    return best_send(get_climbs(user_id, discipline), discipline)
 
 
 def log_climb(user_id, discipline, grade, status, climb_date, route_name="", location="",
@@ -244,9 +249,11 @@ def start_session_timer(user_id, started_at):
         )
 
 
-def active_session_start(user_id):
-    """When the user's running session timer started, or None if it isn't running."""
-    profile = get_profile(user_id)
+def active_session_start(user_id, profile=None):
+    """When the user's running session timer started, or None if it isn't running.
+    Pass the already-loaded profile to skip a database round trip."""
+    if profile is None:
+        profile = get_profile(user_id)
     if not profile or not profile.get("active_session_started"):
         return None
     try:

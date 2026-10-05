@@ -12,7 +12,7 @@ from harnesssync.grades import (
 )
 from harnesssync.profile_manager import (
     get_profile, save_profile, display_name_taken, delete_account,
-    log_climb, get_climbs, best_climb, get_sessions, delete_climb, update_climb,
+    log_climb, get_climbs, best_send, get_sessions, delete_climb, update_climb,
     start_session_timer, active_session_start, end_session_timer,
     log_project, get_projects, update_project, add_project_attempt, delete_project, graduate_project,
     DISPLAY_NAME_MAX, ROUTE_MAX, LOCATION_MAX, NOTES_MAX,
@@ -215,7 +215,7 @@ if submitted:
 st.sidebar.markdown("---")
 st.sidebar.header("⏱️ Session Timer")
 
-session_start = active_session_start(user_id)
+session_start = active_session_start(user_id, profile)
 if session_start is None:
     if st.sidebar.button("▶️ Start Session", width="stretch"):
         start_session_timer(user_id, user_now())
@@ -387,7 +387,8 @@ with projects_tab:
                             e_date_default = datetime.strptime(proj["date"], "%Y-%m-%d").date()
                         except ValueError:
                             e_date_default = user_now().date()
-                        e_date = st.date_input("Date added", value=e_date_default)
+                        today = user_now().date()
+                        e_date = st.date_input("Date added", value=min(e_date_default, today), max_value=today)
                         e_attempts = st.number_input("Attempts", min_value=1, max_value=10000, value=int(proj["attempts"]))
                         e_notes = st.text_area("Beta / Notes", value=proj["notes"], max_chars=NOTES_MAX)
                         if st.form_submit_button("Save project details", width="stretch"):
@@ -438,8 +439,9 @@ with leaderboard_tab:
 with dashboard_tab:
     climbs = get_climbs(user_id)
     sessions = get_sessions(user_id)
-    boulder_best = best_climb(user_id, "Boulder")
-    rope_best = best_climb(user_id, "Rope")
+    # From the climbs already loaded - every click reruns this, and each query is a trip to the database
+    boulder_best = best_send(climbs, "Boulder")
+    rope_best = best_send(climbs, "Rope")
     today_str = user_now().date().isoformat()
 
     st.write("### 📊 Climb Overview")
@@ -548,8 +550,10 @@ with dashboard_tab:
                         edit_grade_list = GRADES_BY_DISCIPLINE[edit_disc]
                         curr_g_idx = edit_grade_list.index(target_climb["grade"]) if target_climb["grade"] in edit_grade_list else 0
                         edit_grade = st.selectbox("Grade", edit_grade_list, index=curr_g_idx, key=f"edit_grade_{k}_{edit_disc}")
-                        edit_status_idx = SEND_STATUSES.index(target_climb["status"]) if target_climb["status"] in SEND_STATUSES else 0
-                        edit_status = st.selectbox("Send Status", SEND_STATUSES, index=edit_status_idx, key=f"edit_status_{k}")
+                        # Only send styles: a Project/Attempt belongs in the Projects tab, not the climb log.
+                        # An older row that already has one keeps it, so saving other edits doesn't change it.
+                        status_options = SENT_STATUSES + ([target_climb["status"]] if target_climb["status"] not in SENT_STATUSES else [])
+                        edit_status = st.selectbox("Send Status", status_options, index=status_options.index(target_climb["status"]), key=f"edit_status_{k}")
                         edit_env = st.selectbox("Environment", ENVIRONMENTS, index=ENVIRONMENTS.index(target_climb["environment"]) if target_climb["environment"] in ENVIRONMENTS else 0, key=f"edit_env_{k}")
                     with e_col2:
                         edit_angle = st.selectbox("Wall Angle", WALL_ANGLES, index=WALL_ANGLES.index(target_climb["angle"]) if target_climb["angle"] in WALL_ANGLES else 1, key=f"edit_angle_{k}")
@@ -561,7 +565,9 @@ with dashboard_tab:
                             default_d = datetime.strptime(target_climb["date"], "%Y-%m-%d").date()
                         except ValueError:
                             default_d = user_now().date()
-                        edit_date = st.date_input("Date", value=default_d, key=f"edit_date_{k}")
+                        today = user_now().date()
+                        # Clamped: date_input raises if a stored date is already past max_value
+                        edit_date = st.date_input("Date", value=min(default_d, today), max_value=today, key=f"edit_date_{k}")
 
                     btn_col1, btn_col2 = st.columns(2)
                     with btn_col1:
