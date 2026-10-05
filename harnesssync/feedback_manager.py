@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 
 import sqlalchemy as sa
 
-from db_store import get_db, rows, feedback
+from harnesssync.db_store import get_db, rows, feedback
 
 MESSAGE_MAX = 2000
 # Feedback is emailed to the developer, so cap how often one account can send it

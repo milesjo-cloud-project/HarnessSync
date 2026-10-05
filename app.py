@@ -6,22 +6,22 @@ import streamlit as st
 import pandas as pd
 import altair as alt
 
-from grades import (
+from harnesssync.grades import (
     GRADES_BY_DISCIPLINE, SEND_STATUSES, SENT_STATUSES, PROJECT_STATUSES,
     ENVIRONMENTS, WALL_ANGLES, HOLD_TYPES, grade_rank
 )
-from profile_manager import (
+from harnesssync.profile_manager import (
     get_profile, save_profile, display_name_taken, delete_account,
     log_climb, get_climbs, best_climb, get_sessions, delete_climb, update_climb,
     start_session_timer, active_session_start, end_session_timer,
     log_project, get_projects, update_project, add_project_attempt, delete_project, graduate_project,
     DISPLAY_NAME_MAX, ROUTE_MAX, LOCATION_MAX, NOTES_MAX,
 )
-from feedback_manager import submit_feedback, feedback_block_reason, MESSAGE_MAX
-from user_guide import render_hardware_manual_tab
-from leaderboard_engine import compile_leaderboard
-import notifications
-import waitlist_manager
+from harnesssync.feedback_manager import submit_feedback, feedback_block_reason, MESSAGE_MAX
+from harnesssync.user_guide import render_hardware_manual_tab
+from harnesssync.leaderboard_engine import compile_leaderboard
+from harnesssync import notifications
+from harnesssync import waitlist_manager
 
 st.set_page_config(page_title="HarnessSync | Climbing Intel", layout="wide")
 

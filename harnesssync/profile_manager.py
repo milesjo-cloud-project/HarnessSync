@@ -10,8 +10,8 @@ from datetime import datetime, timezone
 
 import sqlalchemy as sa
 
-from grades import grade_rank, SENT_STATUSES
-from db_store import get_db, rows, profiles, climbs, projects, sessions, feedback, waitlist
+from harnesssync.grades import grade_rank, SENT_STATUSES
+from harnesssync.db_store import get_db, rows, profiles, climbs, projects, sessions, feedback, waitlist
 
 DISPLAY_NAME_MAX = 30
 ROUTE_MAX = 80
