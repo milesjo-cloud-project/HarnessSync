@@ -141,27 +141,30 @@ def log_project(user_id, discipline, grade, project_date, route_name="", locatio
                 environment="Gym", angle="Vertical", hold_type="Mixed", attempts=1, notes=""):
     """Adds a project. If the climber already has a project with the same
     discipline, grade and route name, adds the attempts to it instead of
-    creating a duplicate. Returns "added" or "bumped"."""
+    creating a duplicate. Unnamed projects match on location instead, so
+    logging "V5 attempt at the gym" twice doesn't make two projects.
+    Returns "added" or "bumped"."""
     route_name = _clean(route_name, ROUTE_MAX)
+    location = _clean(location, LOCATION_MAX)
+    same_project = [
+        projects.c.user_id == user_id,
+        projects.c.discipline == discipline,
+        projects.c.grade == grade,
+        sa.func.lower(projects.c.route_name) == route_name.lower(),
+    ]
+    if not route_name:
+        same_project.append(sa.func.lower(projects.c.location) == location.lower())
     with get_db() as conn:
-        if route_name:
-            existing = conn.execute(
-                sa.select(projects.c.id).where(
-                    projects.c.user_id == user_id,
-                    projects.c.discipline == discipline,
-                    projects.c.grade == grade,
-                    sa.func.lower(projects.c.route_name) == route_name.lower(),
-                )
-            ).first()
-            if existing:
-                conn.execute(
-                    projects.update().where(projects.c.id == existing.id)
-                    .values(attempts=projects.c.attempts + attempts)
-                )
-                return "bumped"
+        existing = conn.execute(sa.select(projects.c.id).where(*same_project)).first()
+        if existing:
+            conn.execute(
+                projects.update().where(projects.c.id == existing.id)
+                .values(attempts=projects.c.attempts + attempts)
+            )
+            return "bumped"
         conn.execute(projects.insert().values(
             user_id=user_id, date=project_date, discipline=discipline, grade=grade,
-            route_name=route_name, location=_clean(location, LOCATION_MAX),
+            route_name=route_name, location=location,
             environment=environment, angle=angle, hold_type=hold_type,
             attempts=attempts, notes=(notes or "").strip()[:NOTES_MAX],
         ))

@@ -37,14 +37,14 @@ python -m pytest
 
 | File | What it does |
 | --- | --- |
-| `app.py` | Streamlit UI: sign-in, sidebar logging, tabs (the entry point Streamlit Cloud runs) |
+| `app.py` | Entry point Streamlit Cloud runs: sign-in, then wires up the sidebar and tabs |
+| `harnesssync/ui/` | The page, one module per part: `sidebar`, `dashboard`, `projects`, `leaderboard`, `phone_app`, `feedback`, `guide`, plus shared `common` helpers |
 | `harnesssync/db_store.py` | Database tables and connection (SQLite locally, Postgres in production) |
 | `harnesssync/profile_manager.py` | Profiles, climbs, projects, sessions - every query scoped to the signed-in user |
 | `harnesssync/leaderboard_engine.py` | Builds the opt-in leaderboard |
 | `harnesssync/feedback_manager.py` / `notifications.py` | In-app feedback, rate limiting, email delivery |
 | `harnesssync/waitlist_manager.py` / `waitlist_report.py` | Phone app waitlist and the demand report (`python -m harnesssync.waitlist_report`) |
 | `harnesssync/grades.py` | Grade scales and conversion tables |
-| `harnesssync/user_guide.py` | Guide & Reference tab |
 | `tests/` | pytest suite |
 | `docs/` | GitHub Pages site: home page, privacy policy, Meta Ray-Ban Display session timer |
 | `climber_profiles/` | Local SQLite database (git-ignored) |

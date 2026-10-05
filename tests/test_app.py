@@ -72,6 +72,15 @@ class TestApp(unittest.TestCase):
         self.assertIsNone(profile_manager.active_session_start(USER))
         self.assertEqual(len(profile_manager.get_sessions(USER)), 1)
 
+    def test_every_tab_renders_with_data(self):
+        self._run()  # creates the dev profile
+        profile_manager.log_climb(USER, "Boulder", "V3", "Sent", "2026-09-01")
+        profile_manager.log_climb(USER, "Rope", "5.10a", "Flash", "2026-09-20")
+        profile_manager.log_project(USER, "Boulder", "V6", "2026-09-20", route_name="Crux", notes="heel hook")
+        at = self._run()
+        self.assertEqual(len(at.get("vega_lite_chart")), 3)  # pyramid, send styles, progression
+        self.assertIn("🎉 SENT IT! (Graduate)", [b.label for b in at.button])
+
     def test_climb_editor_offers_only_sends_and_handles_future_dates(self):
         self._run()  # creates the dev profile
         profile_manager.log_climb(USER, "Boulder", "V3", "Sent", "2099-01-01")

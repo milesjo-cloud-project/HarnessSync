@@ -4,7 +4,7 @@ import pandas as pd
 from harnesssync.grades import BOULDER_CONVERSION, ROPE_CONVERSION
 
 
-def render_hardware_manual_tab():
+def render():
     """Renders the climb-logging walkthrough, grade conversion tables, and send status definitions."""
     st.header("📖 Climbing Reference & Conversion Matrix")
     st.caption("International grade scale equivalencies, send definitions, and app guide.")
