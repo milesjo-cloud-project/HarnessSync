@@ -6,23 +6,23 @@ from profile_manager import get_leaderboard_climbs
 
 def compile_leaderboard(discipline):
     """One row per opted-in climber, ranked by hardest send, ties broken by send count."""
-    sends = get_leaderboard_climbs(discipline)
-    if not sends:
+    grade_counts = get_leaderboard_climbs(discipline)
+    if not grade_counts:
         return pd.DataFrame()
 
     # Display names are user-editable and should not define identity. Keep
     # separate accounts separate even if they chose the same public name.
     by_climber = {}
-    for climb in sends:
-        by_climber.setdefault(climb["user_id"], []).append(climb)
+    for row in grade_counts:
+        by_climber.setdefault(row["user_id"], []).append(row)
 
     leaderboard_data = []
-    for climber_sends in by_climber.values():
-        best = max(climber_sends, key=lambda c: grade_rank(discipline, c["grade"]))
+    for climber_grades in by_climber.values():
+        best = max(climber_grades, key=lambda r: grade_rank(discipline, r["grade"]))
         leaderboard_data.append({
             "Climber": best["display_name"],
             "Best Grade": best["grade"],
-            "Sends": len(climber_sends),
+            "Sends": sum(r["sends"] for r in climber_grades),
             "_rank": grade_rank(discipline, best["grade"]),
         })
 

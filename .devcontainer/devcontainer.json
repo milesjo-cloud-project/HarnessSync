@@ -1,7 +1,12 @@
 {
   "name": "Python 3",
   // Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
-  "image": "mcr.microsoft.com/devcontainers/python:1-3.11-bookworm",
+  "image": "mcr.microsoft.com/devcontainers/python:1-3.12-bookworm",
+  // No secrets.toml in a fresh container, so run without Google sign-in.
+  // Keep the forwarded port private - dev mode lets anyone act as anyone.
+  "containerEnv": {
+    "HARNESSSYNC_DEV_MODE": "1"
+  },
   "customizations": {
     "codespaces": {
       "openFiles": [

@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 import sqlalchemy as sa
 
 from grades import grade_rank, SENT_STATUSES
-from db_store import get_db, rows, profiles, climbs, projects, sessions, feedback
+from db_store import get_db, rows, profiles, climbs, projects, sessions, feedback, waitlist
 
 DISPLAY_NAME_MAX = 30
 ROUTE_MAX = 80
@@ -68,7 +68,7 @@ def save_profile(user_id, display_name, show_on_leaderboard=True):
 def delete_account(user_id):
     """Permanently removes the profile and every row belonging to it."""
     with get_db() as conn:
-        for table in (climbs, projects, sessions, feedback):
+        for table in (climbs, projects, sessions, feedback, waitlist):
             conn.execute(table.delete().where(table.c.user_id == user_id))
         conn.execute(profiles.delete().where(profiles.c.user_id == user_id))
 
@@ -235,6 +235,46 @@ def log_session(user_id, started_at, ended_at):
     return duration_min
 
 
+def start_session_timer(user_id, started_at):
+    """Saves the running timer on the profile, so a reload doesn't lose it."""
+    with get_db() as conn:
+        conn.execute(
+            profiles.update().where(profiles.c.user_id == user_id)
+            .values(active_session_started=started_at.isoformat(timespec="seconds"))
+        )
+
+
+def active_session_start(user_id):
+    """When the user's running session timer started, or None if it isn't running."""
+    profile = get_profile(user_id)
+    if not profile or not profile.get("active_session_started"):
+        return None
+    try:
+        return datetime.fromisoformat(profile["active_session_started"])
+    except ValueError:
+        return None
+
+
+def end_session_timer(user_id, ended_at):
+    """Stops the running timer and logs the session. Returns its duration in
+    minutes, or None if no timer was running (e.g. ended in another tab)."""
+    started_at = active_session_start(user_id)
+    if started_at is None:
+        return None
+    with get_db() as conn:
+        # Only clear the exact timer we read: a double-click (or a second tab)
+        # finds it already cleared and doesn't log the session twice.
+        cleared = conn.execute(
+            profiles.update()
+            .where(profiles.c.user_id == user_id,
+                   profiles.c.active_session_started == started_at.isoformat(timespec="seconds"))
+            .values(active_session_started=None)
+        ).rowcount
+    if not cleared:
+        return None
+    return log_session(user_id, started_at, ended_at)
+
+
 def get_sessions(user_id):
     """Logged sessions, newest first."""
     if not user_id:
@@ -246,16 +286,20 @@ def get_sessions(user_id):
 
 # ----------------- LEADERBOARD -----------------
 def get_leaderboard_climbs(discipline):
-    """All sends in a discipline from climbers who opted in to the leaderboard,
-    tagged with their public display name (never their email)."""
+    """Send counts per climber and grade in a discipline, from climbers who
+    opted in to the leaderboard, tagged with their public display name (never
+    their email). Counted in the database so it returns one row per grade a
+    climber has sent, not one row per send."""
     query = (
-        sa.select(profiles.c.user_id, profiles.c.display_name, climbs.c.grade, climbs.c.status)
+        sa.select(profiles.c.user_id, profiles.c.display_name, climbs.c.grade,
+                  sa.func.count().label("sends"))
         .join(profiles, profiles.c.user_id == climbs.c.user_id)
         .where(
             climbs.c.discipline == discipline,
             climbs.c.status.in_(SENT_STATUSES),
             profiles.c.show_on_leaderboard.is_(True),
         )
+        .group_by(profiles.c.user_id, profiles.c.display_name, climbs.c.grade)
     )
     with get_db() as conn:
         return rows(conn.execute(query))
