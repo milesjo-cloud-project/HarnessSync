@@ -267,6 +267,16 @@ class TestHarnessSync(unittest.TestCase):
         self.assertEqual(climbs[0]["grade"], "V6")
         self.assertEqual(climbs[0]["status"], "Redpoint")
 
+    def test_unnamed_projects_merge_by_location(self):
+        user = self._user("erin@example.com")
+        self.assertEqual(profile_manager.log_project(user, "Boulder", "V5", TODAY, location="Movement"), "added")
+        self.assertEqual(profile_manager.log_project(user, "Boulder", "V5", TODAY, location=" movement "), "bumped")
+        # A different gym (or no location) is a different project
+        self.assertEqual(profile_manager.log_project(user, "Boulder", "V5", TODAY, location="Crag"), "added")
+        self.assertEqual(profile_manager.log_project(user, "Boulder", "V5", TODAY), "added")
+        projs = {p["location"]: p["attempts"] for p in profile_manager.get_projects(user)}
+        self.assertEqual(projs, {"Movement": 2, "Crag": 1, "": 1})
+
     def test_text_is_trimmed_and_capped(self):
         user = self._user("alice@example.com")
         profile_manager.log_climb(user, "Boulder", "V1", "Sent", TODAY, route_name="  a   b  " + "x" * 500)
