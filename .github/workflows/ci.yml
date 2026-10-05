@@ -36,7 +36,8 @@ jobs:
       - run: docker build -t harnesssync .
 
       # Start the container and wait for Streamlit's health endpoint, so a
-      # broken import or bad dependency fails the PR instead of the deploy.
+      # bad dependency or image fails the PR instead of the deploy. The health
+      # check answers before app.py runs; tests/test_app.py covers the page.
       - name: Smoke test
         run: |
           docker run -d --name app -p 8501:8501 harnesssync
