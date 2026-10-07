@@ -20,7 +20,13 @@ NOTES_MAX = 500
 
 
 def _clean(text, max_len):
-    """Trim, collapse runs of whitespace, and cap length."""
+    """Trim, collapse runs of whitespace, and cap length.
+
+    The whitespace collapse is load-bearing, not cosmetic: a display name
+    cleaned by this goes into the Subject header of the feedback email, and
+    collapsing CR/LF is what stops someone adding their own headers (a Bcc,
+    say) by putting a newline in their name. Keep \\s+ covering newlines.
+    """
     return re.sub(r"\s+", " ", (text or "")).strip()[:max_len]
 
 

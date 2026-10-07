@@ -4,7 +4,12 @@ services:
     ports:
       - "8501:8501"
     volumes:
-      # Persist the SQLite db and JSON logs across container rebuilds
+      # Persist the SQLite db and JSON logs across container rebuilds.
+      # The image runs as uid 10001, and a bind mount keeps the HOST folder's
+      # ownership, which masks the chown done at build time. Docker Desktop
+      # (macOS/Windows) papers over this; on a Linux host, grant access once:
+      #   sudo chown -R 10001:10001 ./climber_profiles
+      # or add `user: "$(id -u):$(id -g)"` to this service.
       - ./climber_profiles:/app/climber_profiles
       # Secrets stay on the host; mounted read-only
       - ./.streamlit/secrets.toml:/app/.streamlit/secrets.toml:ro

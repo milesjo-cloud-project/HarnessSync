@@ -140,7 +140,7 @@ class TestHarnessSync(unittest.TestCase):
         self.assertIsNone(profile_manager.get_profile(user))
         self.assertEqual(profile_manager.get_climbs(user), [])
         self.assertEqual(profile_manager.get_projects(user), [])
-        self.assertEqual(feedback_manager.load_feedback(), [])
+        self.assertEqual(feedback_manager.load_feedback(user), [])
         self.assertIsNone(waitlist_manager.get_entry(user))
 
     def test_waitlist(self):
@@ -220,12 +220,25 @@ class TestHarnessSync(unittest.TestCase):
         profile_manager.start_session_timer("alice@example.com", datetime(2026, 9, 25, 18, 0, tzinfo=timezone.utc))
         self.assertIsNotNone(profile_manager.active_session_start("alice@example.com"))
 
+    def test_email_verification_claim_fails_closed(self):
+        """The email is the account key, so only an explicitly verified one is
+        accepted. A provider that omits or fudges the claim must not pass."""
+        from harnesssync.ui.common import email_is_verified
+
+        for accepted in (True, "true", "True", " TRUE "):
+            self.assertTrue(email_is_verified(accepted), accepted)
+        # Missing, false, or anything that merely looks truthy is refused
+        for refused in (None, False, "false", "", "yes", "1", 1, [], {"ok": True}):
+            self.assertFalse(email_is_verified(refused), refused)
+
     def test_feedback_manager(self):
         entry = feedback_manager.submit_feedback("bob@example.com", "Bob", "Feature Idea", 5, "Add route tags!")
         self.assertEqual(entry["display_name"], "Bob")
-        all_fb = feedback_manager.load_feedback()
+        all_fb = feedback_manager.load_feedback("bob@example.com")
         self.assertEqual(len(all_fb), 1)
         self.assertEqual(all_fb[0]["message"], "Add route tags!")
+        # Scoped: one climber's feedback is not another's to read
+        self.assertEqual(feedback_manager.load_feedback("mallory@example.com"), [])
 
     def test_feedback_rate_limit(self):
         user = "bob@example.com"
