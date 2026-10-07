@@ -61,6 +61,15 @@ def render(user_id):
             ).properties(height=300)
 
             st.altair_chart(pyramid_chart, width="stretch")
+            # Altair renders to canvas, so a screen reader gets nothing from the
+            # chart itself. These tables are its text alternative - same numbers,
+            # same order, readable by assistive tech and copyable by anyone.
+            with st.expander("🔢 Pyramid as a table"):
+                st.dataframe(
+                    grade_counts.sort_values("Rank", ascending=False)[["grade", "Sends"]]
+                    .rename(columns={"grade": "Grade"}),
+                    width="stretch", hide_index=True,
+                )
 
             style_counts = pyr_df.groupby("status").size().reset_index(name="Sends")
             style_chart = alt.Chart(style_counts).mark_bar().encode(
@@ -71,6 +80,11 @@ def render(user_id):
             ).properties(height=220)
             st.write("#### Send style breakdown")
             st.altair_chart(style_chart, width="stretch")
+            with st.expander("🔢 Send styles as a table"):
+                st.dataframe(
+                    style_counts.rename(columns={"status": "Send style"}),
+                    width="stretch", hide_index=True,
+                )
 
     st.markdown("---")
 
@@ -186,3 +200,12 @@ def render(user_id):
 
             st.altair_chart(progression_chart, width="stretch")
             st.caption("💡 Higher = harder within that discipline's own scale (V-scale or YDS).")
+            with st.expander("🔢 Progression as a table"):
+                st.dataframe(
+                    prog_df[["date", "discipline", "grade", "status", "Rank"]]
+                    .rename(columns={
+                        "date": "Date", "discipline": "Discipline",
+                        "grade": "Grade", "status": "Status", "Rank": "Difficulty rank",
+                    }),
+                    width="stretch", hide_index=True,
+                )

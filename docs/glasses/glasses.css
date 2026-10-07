@@ -7,6 +7,11 @@
   --accent: #38bdf8;
   --rest: #fbbf24;
   --button: #1e293b;
+  /* The button fill is only 1.44:1 against the page, so on a normal screen
+     the controls had no perceivable edge. This border carries it instead:
+     3.85:1 against the page, and 3.08:1 against --focus so the focused and
+     unfocused states still read as different. */
+  --button-edge: #5a6b80;
   --focus: #00d4ff;
 }
 
@@ -82,6 +87,19 @@ body {
 
 .hidden { display: none; }
 
+/* Announced by screen readers, takes no space on the display. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
 .controls {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -92,7 +110,7 @@ button {
   min-block-size: 88px;
   min-inline-size: 0;
   padding: 8px;
-  border: 3px solid transparent;
+  border: 3px solid var(--button-edge);
   border-radius: 16px;
   background: var(--button);
   color: var(--text);

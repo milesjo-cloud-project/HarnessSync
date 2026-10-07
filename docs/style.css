@@ -2,7 +2,12 @@
   --bg: #ffffff;
   --text: #1f2933;
   --muted: #5f6b7a;
-  --accent: #1d6fd8;
+  /* 7.59:1 on white, as a link and behind a white button label - AAA with
+     room to spare. A brighter blue (#1d6fd8) only reached 4.86:1. */
+  --accent: #14539f;
+  /* Button label colour. Kept separate from --bg so each scheme can pick the
+     one that clears WCAG 4.5:1 against --accent. */
+  --on-accent: #ffffff;
   --border: #e3e8ee;
   --card: #f6f8fa;
 }
@@ -13,6 +18,8 @@
     --text: #e2e8f0;
     --muted: #94a3b8;
     --accent: #60a5fa;
+    /* White on this lighter accent is only 2.5:1; dark ink on it is 7.0:1 */
+    --on-accent: #0f172a;
     --border: #334155;
     --card: #1e293b;
   }
@@ -45,9 +52,31 @@ a { color: var(--accent); }
   padding: 12px 20px;
   border-radius: 8px;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-accent);
   font-weight: 600;
   text-decoration: none;
+}
+
+/* The default ring sits on the accent fill and can disappear against it, so
+   draw our own in the text colour and offset it clear of the button. */
+a:focus-visible {
+  outline: 3px solid var(--text);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* Visible to screen readers, not on screen - used for text that gives
+   context the visual design already conveys (e.g. "opens in a new tab"). */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
 
 .card {
