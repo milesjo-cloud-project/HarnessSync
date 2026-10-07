@@ -1,8 +1,12 @@
 name: CI
 
 on:
+  # Every pull request, whatever it targets. Filtering this to `main` meant a
+  # PR based on another branch got no run at all - and a PR reporting no
+  # checks reads like "nothing failed" rather than "nothing ran".
   pull_request:
-    branches: [main]
+  # Only `main` on push: a PR already covers its own branch, so filtering here
+  # is what stops each commit being built twice.
   push:
     branches: [main]
 
