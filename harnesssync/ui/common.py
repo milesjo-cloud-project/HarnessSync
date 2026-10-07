@@ -20,6 +20,24 @@ def auth_configured():
     return bool(_secret_section("auth"))
 
 
+def email_is_verified(claim):
+    """Whether the provider vouched for the email address it handed us.
+
+    The email *is* the account key, so an unverified one would let someone
+    sign in at a provider that doesn't check addresses, claim a victim's,
+    and inherit their whole log. Google always sends this claim for its own
+    addresses. A provider that omits it is treated as unverified rather than
+    trusted - if you add one that doesn't send the claim, this fails closed
+    with a visible error instead of silently opening that door.
+
+    Takes the raw claim because providers spell it differently: a JSON
+    boolean, or the string "true".
+    """
+    if isinstance(claim, str):
+        return claim.strip().lower() == "true"
+    return claim is True
+
+
 def dev_mode():
     """Local-only fallback that identifies users by a typed name instead of a
     login. Must be switched on explicitly so a deploy that's missing its auth

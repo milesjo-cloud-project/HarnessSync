@@ -14,10 +14,22 @@ def _timestamp(dt):
     return dt.isoformat(timespec="seconds")
 
 
-def load_feedback():
-    """All feedback entries, newest first."""
+def load_feedback(user_id):
+    """One climber's feedback entries, newest first.
+
+    Scoped to a user like every other reader here. An unscoped version would
+    hand back every account's messages, display names and sign-in emails, and
+    sitting in a module the UI already imports, it was one call away from
+    becoming a cross-user leak.
+    """
+    if not user_id:
+        return []
     with get_db() as conn:
-        return rows(conn.execute(sa.select(feedback).order_by(feedback.c.submitted_at.desc(), feedback.c.id.desc())))
+        return rows(conn.execute(
+            sa.select(feedback)
+            .where(feedback.c.user_id == user_id)
+            .order_by(feedback.c.submitted_at.desc(), feedback.c.id.desc())
+        ))
 
 
 def feedback_block_reason(user_id, now=None):

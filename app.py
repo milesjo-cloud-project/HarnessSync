@@ -2,7 +2,7 @@ import streamlit as st
 
 from harnesssync.profile_manager import get_profile, save_profile, display_name_taken, DISPLAY_NAME_MAX
 from harnesssync.ui import dashboard, feedback, guide, leaderboard, phone_app, projects, sidebar
-from harnesssync.ui.common import auth_configured, dev_mode, show_flash
+from harnesssync.ui.common import auth_configured, dev_mode, email_is_verified, show_flash
 
 st.set_page_config(page_title="HarnessSync | Climbing Intel", layout="wide")
 
@@ -21,7 +21,17 @@ def resolve_user():
             )
             st.button("Sign in with Google", on_click=st.login, type="primary")
             st.stop()
-        user_id = st.user.get("email") or st.user.get("sub")
+        email = st.user.get("email")
+        if email and not email_is_verified(st.user.get("email_verified")):
+            st.error(
+                "Your sign-in provider hasn't verified this email address, so it can't be "
+                "used to identify your account. Verify it with your provider and sign in again."
+            )
+            st.button("Sign out", on_click=st.logout)
+            st.stop()
+        # Falls back to `sub` only when there's no email at all. The provider
+        # issues `sub` itself, so it needs no verification of its own.
+        user_id = email or st.user.get("sub")
         return user_id, st.user.get("given_name") or st.user.get("name") or ""
 
     if dev_mode():
