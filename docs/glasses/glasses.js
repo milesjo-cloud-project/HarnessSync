@@ -31,7 +31,14 @@ let restAnnounced = state.restEndsAt !== null && state.restEndsAt <= Date.now();
 function loadState() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    return saved ? { ...DEFAULT_STATE, ...saved } : { ...DEFAULT_STATE };
+    const restored = saved ? { ...DEFAULT_STATE, ...saved } : { ...DEFAULT_STATE };
+    // A running timer is meaningless without its start timestamp: the clock
+    // would read `now - null`, i.e. time since 1970. Treat it as paused.
+    if (restored.running && typeof restored.startedAt !== "number") {
+      restored.running = false;
+      restored.startedAt = null;
+    }
+    return restored;
   } catch {
     return { ...DEFAULT_STATE };
   }
