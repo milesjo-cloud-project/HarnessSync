@@ -1,6 +1,7 @@
 """Helpers shared by every part of the page."""
 
 import os
+import traceback
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
@@ -66,6 +67,31 @@ def cached_leaderboard(discipline):
 
 def leaderboard_changed():
     cached_leaderboard.clear()
+
+
+def report_crash(error):
+    """Email the developer an unhandled exception.
+
+    Without this, a crash in production shows the visitor a traceback and
+    nobody is told. Deduplicated per session so a failure that repeats on
+    every rerun doesn't become a mail loop, and a no-op when email isn't
+    configured. Never raises - a reporting failure must not replace the
+    original error with a more confusing one.
+    """
+    try:
+        from harnesssync import notifications
+
+        signature = f"{type(error).__name__}: {error}"
+        already_sent = st.session_state.setdefault("_reported_crashes", set())
+        if signature in already_sent:
+            return
+        already_sent.add(signature)
+        notifications.send_email(
+            subject=f"HarnessSync crash: {type(error).__name__}",
+            body="".join(traceback.format_exception(type(error), error, error.__traceback__)),
+        )
+    except Exception:
+        pass
 
 
 def flash(kind, message=""):

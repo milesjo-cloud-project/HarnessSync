@@ -6,7 +6,7 @@ another account's rows - even with a guessed record id.
 """
 
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import sqlalchemy as sa
 
@@ -17,6 +17,11 @@ DISPLAY_NAME_MAX = 30
 ROUTE_MAX = 80
 LOCATION_MAX = 80
 NOTES_MAX = 500
+
+# Nobody climbs for twelve hours straight. A session longer than this is a
+# timer someone forgot to stop, so it's clamped rather than recorded as-is -
+# otherwise one forgotten timer dominates the session history and the CSV.
+MAX_SESSION_MIN = 12 * 60
 
 
 def _clean(text, max_len):
@@ -236,8 +241,16 @@ def graduate_project(user_id, project_id, send_date, send_status="Redpoint"):
 
 # ----------------- SESSIONS -----------------
 def log_session(user_id, started_at, ended_at):
-    """Records one completed gym/crag session. Returns duration in minutes."""
+    """Records one completed gym/crag session. Returns duration in minutes.
+
+    A session beyond MAX_SESSION_MIN is clamped. The end time is moved with
+    it rather than only the duration, so start, end and duration still agree
+    with each other in the history table and the CSV export.
+    """
     duration_min = round((ended_at - started_at).total_seconds() / 60, 1)
+    if duration_min > MAX_SESSION_MIN:
+        duration_min = float(MAX_SESSION_MIN)
+        ended_at = started_at + timedelta(minutes=MAX_SESSION_MIN)
     with get_db() as conn:
         conn.execute(sessions.insert().values(
             user_id=user_id,
@@ -306,9 +319,18 @@ def get_leaderboard_climbs(discipline):
     opted in to the leaderboard, tagged with their public display name (never
     their email). Counted in the database so it returns one row per grade a
     climber has sent, not one row per send."""
+    # Sending the same named route again is a repeat, not new volume, so each
+    # distinct name counts once - otherwise logging one route fifty times
+    # reads as fifty sends, and send count is the tie-break within a grade.
+    # Unnamed climbs still count per log: two "V4, no name" entries really are
+    # two different gym problems, which is how most bouldering gets logged.
+    route = sa.func.coalesce(climbs.c.route_name, "")
+    sends = (
+        sa.func.count(sa.distinct(sa.case((route != "", sa.func.lower(route)))))
+        + sa.func.count(sa.case((route == "", 1)))
+    ).label("sends")
     query = (
-        sa.select(profiles.c.user_id, profiles.c.display_name, climbs.c.grade,
-                  sa.func.count().label("sends"))
+        sa.select(profiles.c.user_id, profiles.c.display_name, climbs.c.grade, sends)
         .join(profiles, profiles.c.user_id == climbs.c.user_id)
         .where(
             climbs.c.discipline == discipline,

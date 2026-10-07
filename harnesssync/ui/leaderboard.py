@@ -9,7 +9,8 @@ def render():
     st.header("🏆 Leaderboard")
     st.caption("Ranked by hardest send (Onsight, Flash, Redpoint or Sent) within each discipline. "
                "You can hide yourself from the leaderboard in the 👤 account menu.")
-    lb_discipline = st.radio("Discipline", ["Boulder", "Rope"], horizontal=True, key="leaderboard_discipline")
+    lb_discipline = st.radio("Leaderboard discipline", ["Boulder", "Rope"], horizontal=True,
+                             key="leaderboard_discipline")
     lb_df = cached_leaderboard(lb_discipline)
 
     if lb_df.empty:

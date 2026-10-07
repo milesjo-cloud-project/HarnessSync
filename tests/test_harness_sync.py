@@ -206,6 +206,34 @@ class TestHarnessSync(unittest.TestCase):
         self.assertEqual(len(profile_manager.get_sessions(user)), 1)
         self.assertIsNone(profile_manager.active_session_start(user))
 
+    def test_forgotten_session_timer_is_clamped(self):
+        """A timer left running overnight shouldn't log a 20-hour session."""
+        user = self._user("alice@example.com")
+        start = datetime(2026, 9, 25, 18, 0, tzinfo=timezone.utc)
+        profile_manager.start_session_timer(user, start)
+
+        logged = profile_manager.end_session_timer(user, start + timedelta(hours=20))
+        self.assertEqual(logged, float(profile_manager.MAX_SESSION_MIN))
+
+        # The end time moves with the duration, so the row stays self-consistent
+        session = profile_manager.get_sessions(user)[0]
+        span = datetime.fromisoformat(session["ended_at"]) - datetime.fromisoformat(session["started_at"])
+        self.assertEqual(span.total_seconds() / 60, session["duration_min"])
+
+    def test_leaderboard_counts_a_repeated_route_once(self):
+        user = self._user("alice@example.com")
+        # Same named route logged five times is one send, not five
+        for _ in range(5):
+            profile_manager.log_climb(user, "Boulder", "V4", "Sent", TODAY, route_name="The Arete")
+        # Casing shouldn't create a second route either
+        profile_manager.log_climb(user, "Boulder", "V4", "Sent", TODAY, route_name="the arete")
+        # Unnamed gym problems are genuinely different climbs, so they still add up
+        profile_manager.log_climb(user, "Boulder", "V4", "Sent", TODAY)
+        profile_manager.log_climb(user, "Boulder", "V4", "Sent", TODAY)
+
+        board = leaderboard_engine.compile_leaderboard("Boulder")
+        self.assertEqual(int(board.loc[0, "Sends"]), 3)  # 1 named + 2 unnamed
+
     def test_new_columns_added_to_existing_database(self):
         old_path = os.path.join(self.test_dir, "old.db")
         conn = sqlite3.connect(old_path)
@@ -279,6 +307,14 @@ class TestHarnessSync(unittest.TestCase):
         self.assertEqual(len(climbs), 1)
         self.assertEqual(climbs[0]["grade"], "V6")
         self.assertEqual(climbs[0]["status"], "Redpoint")
+
+        # Graduating records the style the climber picked, not always Redpoint:
+        # you can flash a route you'd been projecting.
+        profile_manager.log_project(user, "Rope", "5.11a", TODAY, route_name="Second Go")
+        flashed = profile_manager.get_projects(user)[0]["id"]
+        profile_manager.graduate_project(user, flashed, TODAY, send_status="Flash")
+        sent = next(c for c in profile_manager.get_climbs(user) if c["route_name"] == "Second Go")
+        self.assertEqual(sent["status"], "Flash")
 
     def test_unnamed_projects_merge_by_location(self):
         user = self._user("erin@example.com")

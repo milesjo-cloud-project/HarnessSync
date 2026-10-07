@@ -6,7 +6,7 @@ from harnesssync.grades import GRADES_BY_DISCIPLINE, SEND_STATUSES, PROJECT_STAT
 from harnesssync.profile_manager import (
     save_profile, display_name_taken, delete_account, log_climb, log_project,
     start_session_timer, active_session_start, end_session_timer,
-    DISPLAY_NAME_MAX, ROUTE_MAX, LOCATION_MAX,
+    DISPLAY_NAME_MAX, ROUTE_MAX, LOCATION_MAX, MAX_SESSION_MIN,
 )
 from harnesssync.ui.common import auth_configured, user_now, user_tz, flash, leaderboard_changed
 
@@ -46,7 +46,9 @@ def render_account(user_id, profile):
 
 def render_log_form(user_id):
     st.sidebar.header("📝 Log a Climb / Session")
-    discipline = st.sidebar.radio("Discipline", ["Boulder", "Rope"], horizontal=True)
+    # Several "Discipline" pickers render on one page. Distinct labels so a
+    # screen reader doesn't announce four identical controls.
+    discipline = st.sidebar.radio("Discipline to log", ["Boulder", "Rope"], horizontal=True)
 
     with st.sidebar.form("log_climb_form", clear_on_submit=True):
         grade = st.selectbox("Grade", GRADES_BY_DISCIPLINE[discipline])
@@ -96,6 +98,11 @@ def render_session_timer(user_id, profile):
         elapsed_min = (user_now() - session_start).total_seconds() / 60
         start_label = session_start.strftime("%I:%M %p").lstrip("0")
         st.sidebar.caption(f"Started {start_label} · {elapsed_min:.0f} min so far")
+        if elapsed_min > MAX_SESSION_MIN:
+            st.sidebar.warning(
+                f"This timer has run over {MAX_SESSION_MIN // 60} hours - left running by mistake? "
+                f"Ending it now logs {MAX_SESSION_MIN // 60} hours, not the full stretch."
+            )
         if st.sidebar.button("⏹ End Session", width="stretch"):
             duration_min = end_session_timer(user_id, user_now())
             if duration_min is not None:

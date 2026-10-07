@@ -2,7 +2,7 @@ import streamlit as st
 
 from harnesssync.profile_manager import get_profile, save_profile, display_name_taken, DISPLAY_NAME_MAX
 from harnesssync.ui import dashboard, feedback, guide, leaderboard, phone_app, projects, sidebar
-from harnesssync.ui.common import auth_configured, dev_mode, email_is_verified, show_flash
+from harnesssync.ui.common import auth_configured, dev_mode, email_is_verified, report_crash, show_flash
 
 st.set_page_config(page_title="HarnessSync | Climbing Intel", layout="wide")
 
@@ -66,40 +66,51 @@ def render_onboarding(user_id, suggested_name):
     st.stop()
 
 
-user_id, suggested_name = resolve_user()
-profile = get_profile(user_id)
-if profile is None:
-    if dev_mode() and not auth_configured():
-        save_profile(user_id, suggested_name)
-        profile = get_profile(user_id)
-    else:
-        render_onboarding(user_id, suggested_name)
-display_name = profile["display_name"]
+def render_page():
+    user_id, suggested_name = resolve_user()
+    profile = get_profile(user_id)
+    if profile is None:
+        if dev_mode() and not auth_configured():
+            save_profile(user_id, suggested_name)
+            profile = get_profile(user_id)
+        else:
+            render_onboarding(user_id, suggested_name)
+    display_name = profile["display_name"]
 
-show_flash()
+    show_flash()
 
-# ----------------- SIDEBAR -----------------
-sidebar.render_account(user_id, profile)
-sidebar.render_log_form(user_id)
-sidebar.render_session_timer(user_id, profile)
+    # ----------------- SIDEBAR -----------------
+    sidebar.render_account(user_id, profile)
+    sidebar.render_log_form(user_id)
+    sidebar.render_session_timer(user_id, profile)
 
-# ----------------- MAIN PANEL HEADER -----------------
-st.title("🧗 HarnessSync")
-st.subheader("Climb Logging, Volume Pyramids & Project Tracking")
+    # ----------------- MAIN PANEL HEADER -----------------
+    st.title("🧗 HarnessSync")
+    st.subheader("Climb Logging, Volume Pyramids & Project Tracking")
 
-dashboard_tab, projects_tab, leaderboard_tab, mobile_tab, user_feedback_tab, guide_tab = st.tabs(
-    ["📊 Dashboard", "🎯 Projects", "🏆 Leaderboard", "📱 Phone App", "💬 Feedback", "📖 Guide & Reference"]
-)
+    dashboard_tab, projects_tab, leaderboard_tab, mobile_tab, user_feedback_tab, guide_tab = st.tabs(
+        ["📊 Dashboard", "🎯 Projects", "🏆 Leaderboard", "📱 Phone App", "💬 Feedback", "📖 Guide & Reference"]
+    )
 
-with dashboard_tab:
-    dashboard.render(user_id)
-with projects_tab:
-    projects.render(user_id)
-with leaderboard_tab:
-    leaderboard.render()
-with mobile_tab:
-    phone_app.render(user_id)
-with user_feedback_tab:
-    feedback.render(user_id, display_name)
-with guide_tab:
-    guide.render()
+    with dashboard_tab:
+        dashboard.render(user_id)
+    with projects_tab:
+        projects.render(user_id)
+    with leaderboard_tab:
+        leaderboard.render()
+    with mobile_tab:
+        phone_app.render(user_id)
+    with user_feedback_tab:
+        feedback.render(user_id, display_name)
+    with guide_tab:
+        guide.render()
+
+
+try:
+    render_page()
+except Exception as error:
+    # Mail the traceback, then let it through unchanged: Streamlit still shows
+    # and logs the error exactly as before. st.stop() and st.rerun() raise from
+    # BaseException precisely so they pass through a handler like this one.
+    report_crash(error)
+    raise
