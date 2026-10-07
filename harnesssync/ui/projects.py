@@ -5,7 +5,7 @@ from datetime import datetime
 import streamlit as st
 import pandas as pd
 
-from harnesssync.grades import GRADES_BY_DISCIPLINE, ENVIRONMENTS, WALL_ANGLES, HOLD_TYPES
+from harnesssync.grades import GRADES_BY_DISCIPLINE, ENVIRONMENTS, WALL_ANGLES, HOLD_TYPES, SENT_STATUSES
 from harnesssync.profile_manager import (
     log_project, get_projects, update_project, add_project_attempt, delete_project, graduate_project,
     ROUTE_MAX, LOCATION_MAX, NOTES_MAX,
@@ -20,7 +20,7 @@ def render(user_id):
     with st.expander("➕ Add New Project"):
         # Outside the form: the grade list depends on it, and widgets inside a
         # form don't rerun the script until submit.
-        p_disc = st.radio("Discipline", ["Boulder", "Rope"], horizontal=True, key="p_disc")
+        p_disc = st.radio("New project discipline", ["Boulder", "Rope"], horizontal=True, key="p_disc")
         with st.form("add_project_form", clear_on_submit=True):
             p_grade = st.selectbox("Grade", GRADES_BY_DISCIPLINE[p_disc], key="p_grade")
             p_route = st.text_input("Route / Problem Name", key="p_route", max_chars=ROUTE_MAX)
@@ -109,8 +109,15 @@ def render(user_id):
 
                 b_col1, b_col2, b_col3 = st.columns([2, 2, 2])
                 with b_col1:
+                    # The send style is the interesting part of a send, and it's
+                    # known exactly at this moment - don't assume Redpoint.
+                    send_status = st.selectbox(
+                        "Send style", SENT_STATUSES,
+                        index=SENT_STATUSES.index("Redpoint"),
+                        key=f"grad_style_{proj['id']}",
+                    )
                     if st.button("🎉 SENT IT! (Graduate)", key=f"grad_{proj['id']}", width="stretch", type="primary"):
-                        alerts = graduate_project(user_id, proj["id"], user_now().date().isoformat(), send_status="Redpoint")
+                        alerts = graduate_project(user_id, proj["id"], user_now().date().isoformat(), send_status=send_status)
                         leaderboard_changed()
                         flash("success", "Graduated project to send history!")
                         for a in alerts:

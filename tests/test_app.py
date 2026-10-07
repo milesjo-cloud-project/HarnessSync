@@ -8,6 +8,7 @@ import os
 import shutil
 import tempfile
 import unittest
+from unittest import mock
 
 from streamlit.testing.v1 import AppTest
 
@@ -80,6 +81,23 @@ class TestApp(unittest.TestCase):
         at = self._run()
         self.assertEqual(len(at.get("vega_lite_chart")), 3)  # pyramid, send styles, progression
         self.assertIn("🎉 SENT IT! (Graduate)", [b.label for b in at.button])
+
+    def test_unhandled_error_is_emailed_and_still_surfaced(self):
+        """A crash in production should reach the developer, without changing
+        what Streamlit shows and logs."""
+        sent = []
+        with mock.patch("harnesssync.notifications.send_email",
+                        side_effect=lambda **kw: sent.append(kw) or True), \
+             mock.patch("harnesssync.ui.guide.render", side_effect=RuntimeError("boom")):
+            at = AppTest.from_file(APP_PATH, default_timeout=30)
+            at.secrets["auth"] = {}
+            at.secrets["email"] = {}
+            at.run()
+
+        self.assertTrue(any("boom" in (call.get("body") or "") for call in sent),
+                        f"traceback was not emailed; calls: {sent}")
+        # Still raised, so Streamlit reports it rather than swallowing it
+        self.assertTrue([e.value for e in at.exception])
 
     def test_charts_have_table_text_alternatives(self):
         """Altair renders to canvas, which assistive tech can't read. Every chart
