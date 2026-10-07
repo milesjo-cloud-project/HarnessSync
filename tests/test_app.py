@@ -81,6 +81,20 @@ class TestApp(unittest.TestCase):
         self.assertEqual(len(at.get("vega_lite_chart")), 3)  # pyramid, send styles, progression
         self.assertIn("🎉 SENT IT! (Graduate)", [b.label for b in at.button])
 
+    def test_charts_have_table_text_alternatives(self):
+        """Altair renders to canvas, which assistive tech can't read. Every chart
+        needs the same numbers available as a table, so don't let those drop out."""
+        self._run()  # creates the dev profile
+        profile_manager.log_climb(USER, "Boulder", "V3", "Sent", "2026-09-01")
+        profile_manager.log_climb(USER, "Boulder", "V2", "Flash", "2026-09-10")
+        at = self._run()
+        tables = [tuple(str(c) for c in df.value.columns) for df in at.dataframe]
+        self.assertIn(("Grade", "Sends"), tables)                 # volume pyramid
+        self.assertIn(("Send style", "Sends"), tables)            # style breakdown
+        self.assertIn(
+            ("Date", "Discipline", "Grade", "Status", "Difficulty rank"), tables
+        )                                                         # grade progression
+
     def test_climb_editor_offers_only_sends_and_handles_future_dates(self):
         self._run()  # creates the dev profile
         profile_manager.log_climb(USER, "Boulder", "V3", "Sent", "2099-01-01")

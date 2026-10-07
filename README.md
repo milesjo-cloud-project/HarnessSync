@@ -46,7 +46,7 @@ python -m pytest
 | `harnesssync/waitlist_manager.py` / `waitlist_report.py` | Phone app waitlist and the demand report (`python -m harnesssync.waitlist_report`) |
 | `harnesssync/grades.py` | Grade scales and conversion tables |
 | `tests/` | pytest suite |
-| `docs/` | GitHub Pages site: home page, privacy policy, Meta Ray-Ban Display session timer |
+| `docs/` | GitHub Pages site: home page and privacy policy |
 | `climber_profiles/` | Local SQLite database (git-ignored) |
 
 ## Deploying

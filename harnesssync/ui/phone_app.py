@@ -20,7 +20,10 @@ def render(user_id):
     with st.form("waitlist_form"):
         platform = st.radio(
             "Which phone would you use it on?", waitlist_manager.PLATFORMS, horizontal=True,
-            index=waitlist_manager.PLATFORMS.index(entry["platform"]) if entry else 0,
+            index=(
+                waitlist_manager.PLATFORMS.index(entry["platform"])
+                if entry and entry["platform"] in waitlist_manager.PLATFORMS else 0
+            ),
         )
         wants = st.multiselect(
             "What would make a phone app worth it over the website? (optional)", waitlist_manager.REASONS,
