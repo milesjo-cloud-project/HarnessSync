@@ -2,12 +2,35 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>HarnessSync Privacy Policy</title>
   <meta name="description" content="What data HarnessSync collects, how it is used, and how to delete it.">
+  <meta name="theme-color" content="#f7f9fc" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#080d17" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="style.css">
+  <!-- Applies a saved theme before the first paint, so the page never flashes
+       the wrong one. Must stay inline and before the stylesheet's first use. -->
+  <script>
+    try {
+      var saved = localStorage.getItem("harnesssync-theme");
+      if (saved === "light" || saved === "dark") {
+        document.documentElement.setAttribute("data-theme", saved);
+      }
+    } catch (e) {}
+  </script>
+  <script src="theme.js" defer></script>
 </head>
 <body>
+  <header class="topbar">
+    <a class="brand" href="index.html">
+      <span aria-hidden="true">🧗</span> HarnessSync
+    </a>
+    <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch theme" hidden>
+      <span class="theme-icon" aria-hidden="true">☾</span>
+    </button>
+  </header>
+
   <main>
     <h1>Privacy Policy</h1>
     <p class="muted">Last updated: October 2, 2026</p>
@@ -17,21 +40,23 @@
       This page explains what the app collects, why, who can see it, and how to delete it.
     </p>
 
-    <h2>What we collect</h2>
-    <ul>
-      <li><strong>From Google sign-in:</strong> your email address and name. The email identifies
-        your account. Your name is only used to suggest a display name the first time you sign in.
-        We never see your Google password.</li>
-      <li><strong>Your display name</strong> and whether you want to appear on the leaderboard.</li>
-      <li><strong>What you log:</strong> climbs (grade, send style, date, route name, location,
-        wall angle, hold type), projects and their notes, and session start/end times.</li>
-      <li><strong>Feedback</strong> you choose to send through the app.</li>
-      <li><strong>Phone app waitlist:</strong> if you join it, which phone you use and any answers you
-        give about what you'd want in a phone app.</li>
-    </ul>
-    <p>
-      We don't use advertising, analytics or tracking cookies. The app sets one sign-in cookie to keep you signed in.
-    </p>
+    <div class="card">
+      <h2>What we collect</h2>
+      <ul>
+        <li><strong>From Google sign-in:</strong> your email address and name. The email identifies
+          your account. Your name is only used to suggest a display name the first time you sign in.
+          We never see your Google password.</li>
+        <li><strong>Your display name</strong> and whether you want to appear on the leaderboard.</li>
+        <li><strong>What you log:</strong> climbs (grade, send style, date, route name, location,
+          wall angle, hold type), projects and their notes, and session start/end times.</li>
+        <li><strong>Feedback</strong> you choose to send through the app.</li>
+        <li><strong>Phone app waitlist:</strong> if you join it, which phone you use and any answers you
+          give about what you'd want in a phone app.</li>
+      </ul>
+      <p>
+        We don't use advertising, analytics or tracking cookies. The app sets one sign-in cookie to keep you signed in.
+      </p>
+    </div>
 
     <h2>How it's used</h2>
     <ul>
@@ -64,14 +89,16 @@
       Google's handling of the form is covered by <a href="https://policies.google.com/privacy">Google's privacy policy</a>.
     </p>
 
-    <h2>Your choices</h2>
-    <ul>
-      <li><strong>Leaderboard:</strong> hide yourself at any time from the 👤 account menu in the app's sidebar.</li>
-      <li><strong>Export:</strong> download your climbs and session history as CSV files from the Dashboard,
-        and your active projects as a CSV file from the Projects tab.</li>
-      <li><strong>Delete:</strong> use "Delete my account &amp; data" in the 👤 account menu. It
-        permanently removes your profile, climbs, projects, sessions, feedback and waitlist signup right away.</li>
-    </ul>
+    <div class="card">
+      <h2>Your choices</h2>
+      <ul>
+        <li><strong>Leaderboard:</strong> hide yourself at any time from the 👤 account menu in the app's sidebar.</li>
+        <li><strong>Export:</strong> download your climbs and session history as CSV files from the Dashboard,
+          and your active projects as a CSV file from the Projects tab.</li>
+        <li><strong>Delete:</strong> use "Delete my account &amp; data" in the 👤 account menu. It
+          permanently removes your profile, climbs, projects, sessions, feedback and waitlist signup right away.</li>
+      </ul>
+    </div>
 
     <h2>Children</h2>
     <p>The app isn't directed at children under 13, and we don't knowingly collect their data.</p>

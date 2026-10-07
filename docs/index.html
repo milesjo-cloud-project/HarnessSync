@@ -2,15 +2,38 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>HarnessSync</title>
   <meta name="description" content="HarnessSync is a free climbing log for tracking sends, projects, grade pyramids and progression.">
+  <meta name="theme-color" content="#f7f9fc" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#080d17" media="(prefers-color-scheme: dark)">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="style.css">
+  <!-- Applies a saved theme before the first paint, so the page never flashes
+       the wrong one. Must stay inline and before the stylesheet's first use. -->
+  <script>
+    try {
+      var saved = localStorage.getItem("harnesssync-theme");
+      if (saved === "light" || saved === "dark") {
+        document.documentElement.setAttribute("data-theme", saved);
+      }
+    } catch (e) {}
+  </script>
+  <script src="theme.js" defer></script>
 </head>
 <body>
+  <header class="topbar">
+    <a class="brand" href="index.html">
+      <span aria-hidden="true">🧗</span> HarnessSync
+    </a>
+    <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch theme" hidden>
+      <span class="theme-icon" aria-hidden="true">☾</span>
+    </button>
+  </header>
+
   <main>
-    <h1><span aria-hidden="true">🧗</span> HarnessSync</h1>
-    <p class="muted">A free climbing log for boulderers and rope climbers.</p>
+    <h1>Climb. Log. Progress.</h1>
+    <p class="lead">A free climbing log for boulderers and rope climbers.</p>
 
     <a class="button" href="https://harnesssync.streamlit.app">Open HarnessSync</a>
 
@@ -44,7 +67,7 @@
       and send counters, and a rest countdown, all driven by the glasses' own controls. It also
       works in an ordinary browser with a mouse or keyboard.
     </p>
-    <a class="button" href="glasses/">Open the session timer</a>
+    <a class="button secondary" href="glasses/">Open the session timer</a>
 
     <h2>Signing in</h2>
     <p>

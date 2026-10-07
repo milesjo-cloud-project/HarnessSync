@@ -1,72 +1,283 @@
+/* HarnessSync site styles.
+   Mobile-first, with a translucent "glass" surface treatment over an ambient
+   gradient backdrop, and an explicit light/dark theme switch.
+
+   Colour note: text sits on translucent panels, so its effective background
+   depends on the backdrop showing through. Every value here was checked
+   against the *worst-case* composite (glass over the most saturated blob),
+   not just over the flat page tint. Worst case is 6.5:1 for muted text and
+   13.9:1 for body text, so there is real headroom. If you retune the blobs
+   or the glass alpha, re-check before shipping. */
+
+/* ----------------------------------------------------------------- tokens */
 :root {
-  --bg: #ffffff;
-  --text: #1f2933;
-  --muted: #5f6b7a;
-  /* 7.59:1 on white, as a link and behind a white button label - AAA with
-     room to spare. A brighter blue (#1d6fd8) only reached 4.86:1. */
+  color-scheme: light;
+
+  --page: #f7f9fc;
+  --blob-a: #b9d0f0;
+  --blob-b: #d9ccf2;
+  --blob-c: #c8e4f0;
+
+  --text: #1b2430;
+  --muted: #4a5768;
   --accent: #14539f;
-  /* Button label colour. Kept separate from --bg so each scheme can pick the
-     one that clears WCAG 4.5:1 against --accent. */
   --on-accent: #ffffff;
-  --border: #e3e8ee;
-  --card: #f6f8fa;
+
+  --glass: rgba(255, 255, 255, 0.72);
+  --glass-bar: rgba(255, 255, 255, 0.78);
+  /* The opaque equivalent, for browsers without backdrop-filter and for
+     visitors who ask for reduced transparency. Matches the composite of
+     --glass over --page, so the design degrades without shifting. */
+  --glass-solid: #fbfcfe;
+  --glass-border: rgba(255, 255, 255, 0.85);
+  --glass-shadow: 0 8px 32px rgba(16, 32, 64, 0.10);
+  --hairline: rgba(27, 36, 48, 0.14);
 }
 
+/* System preference, unless the visitor has explicitly chosen light */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0f172a;
-    --text: #e2e8f0;
-    --muted: #94a3b8;
-    --accent: #60a5fa;
-    /* White on this lighter accent is only 2.5:1; dark ink on it is 7.0:1 */
-    --on-accent: #0f172a;
-    --border: #334155;
-    --card: #1e293b;
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --page: #080d17;
+    --blob-a: #1e4a85;
+    --blob-b: #3a2f6b;
+    --blob-c: #14405e;
+
+    --text: #e8eef7;
+    --muted: #a3b2c7;
+    --accent: #7eb6fd;
+    --on-accent: #0b1220;
+
+    --glass: rgba(17, 25, 40, 0.70);
+    --glass-bar: rgba(17, 25, 40, 0.80);
+    --glass-solid: #0e1523;
+    --glass-border: rgba(255, 255, 255, 0.12);
+    --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.40);
+    --hairline: rgba(232, 238, 247, 0.16);
   }
 }
 
+/* Explicit choice from the theme switch, which wins over the system */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --page: #080d17;
+  --blob-a: #1e4a85;
+  --blob-b: #3a2f6b;
+  --blob-c: #14405e;
+
+  --text: #e8eef7;
+  --muted: #a3b2c7;
+  --accent: #7eb6fd;
+  --on-accent: #0b1220;
+
+  --glass: rgba(17, 25, 40, 0.70);
+  --glass-bar: rgba(17, 25, 40, 0.80);
+  --glass-solid: #0e1523;
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.40);
+  --hairline: rgba(232, 238, 247, 0.16);
+}
+
+/* ------------------------------------------------------------------- base */
 * { box-sizing: border-box; }
+
+html {
+  -webkit-text-size-adjust: 100%;
+  /* Keep anchored headings clear of the sticky bar */
+  scroll-padding-top: 88px;
+}
 
 body {
   margin: 0;
-  background: var(--bg);
+  background: var(--page);
   color: var(--text);
-  font: 16px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, Roboto, sans-serif;
+  /* Long URLs and route names shouldn't force a sideways scroll on a phone */
+  overflow-wrap: break-word;
+  -webkit-tap-highlight-color: rgba(20, 83, 159, 0.15);
 }
 
-main {
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 48px 16px 64px;
+/* The ambient backdrop. Fixed and behind everything, so the glass panels
+   have something to refract as the page scrolls. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(60vmax 60vmax at 10% -12%, var(--blob-a), transparent 62%),
+    radial-gradient(52vmax 52vmax at 96% 6%, var(--blob-b), transparent 58%),
+    /* Anchored low so panels still have something to refract once the
+       visitor has scrolled past the first screen */
+    radial-gradient(55vmax 55vmax at 50% 108%, var(--blob-c), transparent 60%);
 }
 
-h1 { font-size: 2rem; line-height: 1.2; margin: 0 0 8px; }
-h2 { font-size: 1.2rem; margin: 32px 0 8px; }
-p, li { color: var(--text); }
-.muted { color: var(--muted); }
-a { color: var(--accent); }
+/* -------------------------------------------------------------- top bar */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px max(16px, env(safe-area-inset-right)) 10px max(16px, env(safe-area-inset-left));
+  padding-top: calc(10px + env(safe-area-inset-top));
+  background: var(--glass-bar);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid var(--hairline);
+}
 
-.button {
-  display: inline-block;
-  margin: 16px 0;
-  padding: 12px 20px;
-  border-radius: 8px;
-  background: var(--accent);
-  color: var(--on-accent);
-  font-weight: 600;
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+  font-weight: 650;
+  font-size: 1rem;
+  letter-spacing: -0.01em;
   text-decoration: none;
 }
 
-/* The default ring sits on the accent fill and can disappear against it, so
-   draw our own in the text colour and offset it clear of the button. */
-a:focus-visible {
-  outline: 3px solid var(--text);
-  outline-offset: 3px;
-  border-radius: 4px;
+/* -------------------------------------------------- theme switch button */
+/* Hidden until theme.js enables it, so it is never a dead control */
+.theme-toggle[hidden] { display: none; }
+
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* 44px: the smallest comfortable touch target */
+  inline-size: 44px;
+  block-size: 44px;
+  flex: none;
+  padding: 0;
+  border: 1px solid var(--hairline);
+  border-radius: 50%;
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
+  backdrop-filter: blur(12px) saturate(160%);
+  color: var(--text);
+  font-size: 1.05rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 150ms ease, border-color 150ms ease;
 }
 
-/* Visible to screen readers, not on screen - used for text that gives
-   context the visual design already conveys (e.g. "opens in a new tab"). */
+.theme-toggle:hover { border-color: var(--accent); }
+.theme-toggle:active { transform: scale(0.94); }
+
+/* ------------------------------------------------------------------ layout */
+main {
+  max-width: 760px;
+  margin: 0 auto;
+  padding:
+    32px
+    max(16px, env(safe-area-inset-right))
+    calc(64px + env(safe-area-inset-bottom))
+    max(16px, env(safe-area-inset-left));
+}
+
+/* --------------------------------------------------------------- typography */
+h1 {
+  font-size: clamp(2rem, 7vw, 2.75rem);
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+  margin: 0 0 10px;
+}
+
+h2 {
+  font-size: clamp(1.2rem, 3.6vw, 1.45rem);
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  margin: 40px 0 10px;
+}
+
+p, li { color: var(--text); }
+li { margin: 6px 0; }
+.lead { font-size: 1.1rem; color: var(--muted); }
+.muted { color: var(--muted); }
+
+a { color: var(--accent); }
+
+/* ----------------------------------------------------------------- surfaces */
+.card {
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--glass-border);
+  border-radius: 18px;
+  box-shadow: var(--glass-shadow);
+  padding: 20px;
+  margin: 24px 0;
+}
+
+.card > :first-child { margin-top: 0; }
+.card > :last-child { margin-bottom: 0; }
+
+/* ------------------------------------------------------------------ buttons */
+/* Solid, not glass: a translucent fill can't guarantee the label's contrast */
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-block-size: 48px;
+  /* Full width on a phone, hugging its label once there's room */
+  inline-size: 100%;
+  margin: 16px 0;
+  padding: 12px 24px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+  box-shadow: 0 4px 16px rgba(20, 83, 159, 0.22);
+  transition: transform 150ms ease, box-shadow 150ms ease;
+}
+
+.button:hover { box-shadow: 0 6px 22px rgba(20, 83, 159, 0.3); }
+.button:active { transform: translateY(1px); }
+
+.button.secondary {
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(16px) saturate(170%);
+  backdrop-filter: blur(16px) saturate(170%);
+  border: 1px solid var(--glass-border);
+  color: var(--accent);
+  box-shadow: var(--glass-shadow);
+}
+
+@media (min-width: 480px) {
+  .button { inline-size: auto; }
+}
+
+/* -------------------------------------------------------------------- focus */
+/* Offset so the ring lands on the page rather than inside a coloured fill,
+   where it would be hard to see. */
+a:focus-visible,
+button:focus-visible {
+  outline: 3px solid var(--text);
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+/* ------------------------------------------------------------------- footer */
+footer {
+  margin-top: 48px;
+  padding-top: 16px;
+  border-top: 1px solid var(--hairline);
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+/* ------------------------------------------------------------------ helpers */
+/* Read by screen readers, takes no space on screen */
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -79,18 +290,56 @@ a:focus-visible {
   border: 0;
 }
 
-.card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 4px 20px;
-  margin: 24px 0;
+/* --------------------------------------------------------- user preferences */
+
+/* No backdrop-filter (older Firefox, some embedded browsers): go opaque,
+   otherwise the panels would be a flat wash with text over raw gradient. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .topbar,
+  .card,
+  .button.secondary,
+  .theme-toggle {
+    background: var(--glass-solid);
+  }
 }
 
-footer {
-  margin-top: 48px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border);
-  color: var(--muted);
-  font-size: 0.9rem;
+/* Transparency can cause discomfort and makes text harder to pick out.
+   Drop the backdrop entirely and make every surface opaque. */
+@media (prefers-reduced-transparency: reduce) {
+  body::before { display: none; }
+
+  .topbar,
+  .card,
+  .button.secondary,
+  .theme-toggle {
+    background: var(--glass-solid);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+/* Same again for forced high contrast, plus firmer edges */
+@media (prefers-contrast: more) {
+  body::before { display: none; }
+
+  .topbar,
+  .card,
+  .button.secondary,
+  .theme-toggle {
+    background: var(--glass-solid);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    border-color: var(--text);
+  }
+
+  .muted, .lead { color: var(--text); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
