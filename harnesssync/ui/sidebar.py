@@ -2,11 +2,10 @@
 
 import streamlit as st
 
-from harnesssync.grades import GRADES_BY_DISCIPLINE, SEND_STATUSES, PROJECT_STATUSES, ENVIRONMENTS, WALL_ANGLES, HOLD_TYPES
 from harnesssync.profile_manager import (
-    save_profile, display_name_taken, delete_account, log_climb, log_project,
+    save_profile, display_name_taken, delete_account,
     start_session_timer, active_session_start, end_session_timer,
-    DISPLAY_NAME_MAX, ROUTE_MAX, LOCATION_MAX, MAX_SESSION_MIN,
+    DISPLAY_NAME_MAX, MAX_SESSION_MIN,
 )
 from harnesssync.ui.common import auth_configured, user_now, user_tz, flash, leaderboard_changed
 
@@ -42,46 +41,6 @@ def render_account(user_id, profile):
             if auth_configured():
                 st.logout()
             st.rerun()
-
-
-def render_log_form(user_id):
-    st.sidebar.header("📝 Log a Climb / Session")
-    # Several "Discipline" pickers render on one page. Distinct labels so a
-    # screen reader doesn't announce four identical controls.
-    discipline = st.sidebar.radio("Discipline to log", ["Boulder", "Rope"], horizontal=True)
-
-    with st.sidebar.form("log_climb_form", clear_on_submit=True):
-        grade = st.selectbox("Grade", GRADES_BY_DISCIPLINE[discipline])
-        status = st.selectbox("Send Status", SEND_STATUSES)
-        environment = st.selectbox("Environment", ENVIRONMENTS)
-        angle = st.selectbox("Wall Angle", WALL_ANGLES, index=1)
-        hold_type = st.selectbox("Hold Type", HOLD_TYPES, index=5)
-        route_name = st.text_input("Route / Problem Name (optional)", max_chars=ROUTE_MAX)
-        location = st.text_input("Location (optional)", placeholder="e.g. Movement Gym / Red River Gorge", max_chars=LOCATION_MAX)
-        climb_date = st.date_input("Date", value=user_now().date(), max_value=user_now().date())
-        submitted = st.form_submit_button("🧗 Log Climb", width="stretch")
-
-    if submitted:
-        if status in PROJECT_STATUSES:
-            result = log_project(
-                user_id, discipline, grade, climb_date.isoformat(),
-                route_name=route_name, location=location,
-                environment=environment, angle=angle, hold_type=hold_type,
-            )
-            flash("success", f"Added an attempt to your {discipline} {grade} project!"
-                  if result == "bumped" else f"Added {discipline} {grade} to your 🎯 Projects!")
-        else:
-            pr_alerts = log_climb(
-                user_id, discipline, grade, status, climb_date.isoformat(),
-                route_name=route_name, location=location,
-                environment=environment, angle=angle, hold_type=hold_type,
-            )
-            leaderboard_changed()
-            flash("success", f"Logged {discipline} {grade} ({status}).")
-            for alert in pr_alerts:
-                flash("balloons")
-                flash("success", alert)
-        st.rerun()
 
 
 def render_session_timer(user_id, profile):

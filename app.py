@@ -1,7 +1,7 @@
 import streamlit as st
 
 from harnesssync.profile_manager import get_profile, save_profile, display_name_taken, DISPLAY_NAME_MAX
-from harnesssync.ui import dashboard, feedback, guide, leaderboard, phone_app, projects, sidebar
+from harnesssync.ui import dashboard, feedback, guide, leaderboard, log_climb, phone_app, projects, sidebar
 from harnesssync.ui.common import auth_configured, dev_mode, email_is_verified, report_crash, show_flash
 
 st.set_page_config(page_title="HarnessSync | Climbing Intel", layout="wide")
@@ -14,10 +14,10 @@ def resolve_user():
     if auth_configured():
         if not st.user.is_logged_in:
             st.title("🧗 HarnessSync")
-            st.subheader("Climb Logging, Volume Pyramids & Project Tracking")
+            st.subheader("A simple log for every gym session")
             st.write(
-                "Log your sends, track projects across sessions, and see your grade pyramid "
-                "and progression over time. Sign in to get started - your log is private to you."
+                "Record a climb in a few taps, keep track of projects, and see your progress "
+                "over time. Your climbing log is private to you."
             )
             st.button("Sign in with Google", on_click=st.login, type="primary")
             st.stop()
@@ -51,10 +51,10 @@ def resolve_user():
 
 def render_onboarding(user_id, suggested_name):
     st.title("🧗 Welcome to HarnessSync")
-    st.write("Pick the name other climbers will see on the leaderboard. You can change it later.")
+    st.write("Choose a display name. Your climbing log stays private; sharing on the leaderboard is optional.")
     with st.form("onboarding_form"):
         name = st.text_input("Display name", value=suggested_name[:DISPLAY_NAME_MAX], max_chars=DISPLAY_NAME_MAX)
-        show = st.checkbox("Show me on the public leaderboard", value=True)
+        show = st.checkbox("Show me on the public leaderboard", value=False)
         if st.form_submit_button("Continue", type="primary"):
             if not name.strip():
                 st.warning("Display name can't be empty.")
@@ -81,17 +81,18 @@ def render_page():
 
     # ----------------- SIDEBAR -----------------
     sidebar.render_account(user_id, profile)
-    sidebar.render_log_form(user_id)
     sidebar.render_session_timer(user_id, profile)
 
     # ----------------- MAIN PANEL HEADER -----------------
     st.title("🧗 HarnessSync")
-    st.subheader("Climb Logging, Volume Pyramids & Project Tracking")
+    st.subheader("Log a climb. See your progress.")
 
-    dashboard_tab, projects_tab, leaderboard_tab, mobile_tab, user_feedback_tab, guide_tab = st.tabs(
-        ["📊 Dashboard", "🎯 Projects", "🏆 Leaderboard", "📱 Phone App", "💬 Feedback", "📖 Guide & Reference"]
+    log_tab, dashboard_tab, projects_tab, leaderboard_tab, mobile_tab, user_feedback_tab, guide_tab = st.tabs(
+        ["🧗 Log a climb", "📊 Progress", "🎯 Projects", "🏆 Leaderboard", "📱 Phone App", "💬 Feedback", "📖 Guide & Reference"]
     )
 
+    with log_tab:
+        log_climb.render(user_id)
     with dashboard_tab:
         dashboard.render(user_id)
     with projects_tab:

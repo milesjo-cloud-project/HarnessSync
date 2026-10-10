@@ -51,13 +51,13 @@ class TestApp(unittest.TestCase):
     def test_page_renders(self):
         at = self._run()
         self.assertEqual(
-            [t.label for t in at.tabs][:6],
-            ["📊 Dashboard", "🎯 Projects", "🏆 Leaderboard", "📱 Phone App", "💬 Feedback", "📖 Guide & Reference"],
+            [t.label for t in at.tabs][:7],
+            ["🧗 Log a climb", "📊 Progress", "🎯 Projects", "🏆 Leaderboard", "📱 Phone App", "💬 Feedback", "📖 Guide & Reference"],
         )
 
-    def test_log_climb_from_sidebar(self):
+    def test_log_climb_from_main_flow(self):
         at = self._run()
-        self._button(at, "🧗 Log Climb").click()
+        self._button(at, "Save climb").click()
         at = self._run(at)
         self.assertEqual(len(profile_manager.get_climbs(USER)), 1)
         total = next(m for m in at.metric if m.label == "Total Climbs Logged")

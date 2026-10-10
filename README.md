@@ -6,6 +6,8 @@ across sessions, time your sessions, and see your grade pyramid and progression.
 **Live app:** <https://harnesssync.streamlit.app> ·
 **Home & privacy policy:** <https://milesjo-cloud-project.github.io/HarnessSync/>
 
+**Gym pilot flyer:** [Open the print-ready flyer](docs/gym-flyer.html) · [QR code](docs/gym-qr.svg)
+
 ## Features
 
 - Log climbs with grade (V-scale or YDS), send style, wall angle, hold type and location
