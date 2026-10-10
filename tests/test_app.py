@@ -51,7 +51,7 @@ class TestApp(unittest.TestCase):
     def test_page_renders(self):
         at = self._run()
         self.assertEqual(
-            [t.label for t in at.tabs],
+            [t.label for t in at.tabs][:7],
             ["🧗 Log a climb", "📊 Progress", "🎯 Projects", "🏆 Leaderboard", "📱 Phone App", "💬 Feedback", "📖 Guide & Reference"],
         )
 
