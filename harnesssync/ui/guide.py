@@ -59,8 +59,8 @@ def render():
           your **display name, best grade and send count** appear on the public leaderboard - never your email.
         - **Support reports** are private to you and the owner. See status updates and replies in
           **Help & report a problem → My reports**. Email alerts to the owner may include your account email.
-        - **Optional AI help:** questions go to OpenAI only when you allow it. Report triage requires
-          separate permission on that report. It does not receive your climbing log or account identity.
+        - **Preparing fixes:** there is no in-app AI chatbot. The owner may manually share reviewed,
+          redacted reproduction details with a coding assistant to investigate and prepare a fix.
         - **Crash reports:** we store error types, code locations and occurrence counts without exception
           messages or account identifiers. Include the incident reference when reporting a failure.
         - **Phone app waitlist:** if you join, we store which phone you use and your answers, and email you

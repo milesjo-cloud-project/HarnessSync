@@ -72,7 +72,7 @@ anyone could act as anyone.
 - **Backups:** Neon keeps point-in-time history on the free tier (see *Restore* in its dashboard).
 - **Feedback email** is rate-limited per user (one message per 2 minutes, 5 per day).
 
-## Support dashboard and assistant
+## Support dashboard and reviewed fixes
 
 Add this to the deployed secrets:
 
@@ -84,20 +84,13 @@ owner_emails = ["your-verified-google-email@example.com"]
 Sign in with that verified
 Google account, then open **Help & report a problem → Owner support dashboard**. Local
 `dev:` identities never receive owner access. Reports and additive schema upgrades work
-without AI or email configuration; existing feedback becomes Received tickets.
+without email configuration; existing feedback becomes Received tickets.
 
-To enable the optional support and triage specialists, set `openai_api_key` and `model`
-under `[support]`. Choose a Responses-compatible model available to your API project.
-Alternatively use `OPENAI_API_KEY` and `HARNESSSYNC_SUPPORT_MODEL`. No default model or
-live API key is shipped. Set an API project budget before enabling it. Requests are capped
-at 20/account/UTC day, at least 15 seconds apart, with 800 output tokens, no provider
-retries, and a 20-second HTTP timeout. Failed calls count toward this limit.
-
-AI requests require explicit user permission. Owner triage only includes the selected,
-consented report. The model has no execution or data-changing tools. Its investigation
-brief is a suggestion, never a deployed fix. Use the downloadable repair brief to reproduce
-an issue, implement and test the change, review it, deploy, and verify before marking Fixed.
-Replies are visible in My reports; users are not sent status-update emails.
+No in-app model or AI API key is required. The owner can review and download a
+redacted repair brief for a separate Codex Cloud task. See
+[the repair workflow](docs/codex-repair-workflow.md) for environment setup, test
+commands and the manual release gate. Retired `[support] openai_api_key` and
+`model` settings may be removed; the app no longer reads them.
 
 Email alerts are saved in the database before delivery. New reports and crashes attempt
 their own notification immediately. Retry due notifications from the owner dashboard, or
@@ -110,7 +103,7 @@ duplicates if a process stops after sending; references identify the same report
 Publish `docs/support.html` with the Pages site alongside the app update. Confirm GitHub
 Issues is enabled for this repository and the public fallback form works; GitHub reports
 require a GitHub account. Never post private account data there. Test sign-in failure,
-report submission, owner reply, denied owner access, and AI/email outage behavior before
+report submission, owner reply, denied owner access, and email outage behavior before
 announcing the feature. Existing deployments must use hosted Postgres to retain reports.
 
 ## Phone app demand report

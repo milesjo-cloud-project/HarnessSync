@@ -43,7 +43,7 @@ def feedback_block_reason(user_id, now=None):
 
 
 def submit_feedback(user_id, display_name, category, rating, message, now=None, *,
-                    area="General", steps="", expected="", incident_ref="", ai_consent=False):
+                    area="General", steps="", expected="", incident_ref=""):
     now = now or datetime.now(timezone.utc)
     if not user_id or not message.strip():
         raise ValueError("Add a note before sending - even a sentence helps.")
@@ -53,7 +53,7 @@ def submit_feedback(user_id, display_name, category, rating, message, now=None, 
                  submitted_at=stamp(now), updated_at=stamp(now), category=category,
                  rating=int(rating), message=message.strip()[:MESSAGE_MAX], area=area,
                  steps=steps.strip()[:MESSAGE_MAX], expected=expected.strip()[:MESSAGE_MAX],
-                 incident_ref=incident_ref.strip()[:40], ai_consent=bool(ai_consent))
+                 incident_ref=incident_ref.strip()[:40])
     with get_db() as conn:
         lock_account(conn, user_id)
         blocked = _block_reason(conn, user_id, now)

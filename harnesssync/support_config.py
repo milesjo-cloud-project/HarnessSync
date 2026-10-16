@@ -1,5 +1,4 @@
 """Server-owned support settings. No caller-provided roles or addresses."""
-import os
 
 HELP_URL = "https://milesjo-cloud-project.github.io/HarnessSync/support.html"
 
@@ -21,9 +20,3 @@ def is_owner(user_id):
 def require_owner(user_id):
     if not is_owner(user_id):
         raise PermissionError("Owner access required.")
-
-
-def ai_config():
-    config = settings()
-    return (config.get("openai_api_key") or os.environ.get("OPENAI_API_KEY"),
-            config.get("model") or os.environ.get("HARNESSSYNC_SUPPORT_MODEL"))

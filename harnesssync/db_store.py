@@ -98,6 +98,7 @@ feedback = sa.Table(
     sa.Column("owner_reply", sa.Text, nullable=False, server_default=""),
     sa.Column("updated_at", sa.String(32), nullable=False, server_default=""),
     sa.Column("incident_ref", sa.String(40), nullable=False, server_default=""),
+    # Legacy AI permission retained for non-destructive database compatibility; no longer used.
     sa.Column("ai_consent", sa.Boolean, nullable=False, server_default=sa.false()),
 )
 

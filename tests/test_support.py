@@ -1,6 +1,4 @@
-"""Support access boundaries, durable failure handling, migration, and AI limits."""
-import io
-import json
+"""Support access boundaries, durable failure handling, migration, and repair handoffs."""
 import os
 import shutil
 import sqlite3
@@ -12,7 +10,7 @@ from unittest import mock
 
 import sqlalchemy as sa
 
-from harnesssync import db_store, feedback_manager as tickets, incidents, profile_manager, support_agent
+from harnesssync import db_store, feedback_manager as tickets, incidents, profile_manager
 from harnesssync import support_notifications as mail
 from harnesssync.support_config import is_owner
 
@@ -121,40 +119,25 @@ class TestSupport(unittest.TestCase):
         self.assertEqual(entry["status"], "Received")
         self.assertFalse(entry["ai_consent"])
 
-    def test_ai_requires_consent_owner_permission_and_only_sends_selected_report(self):
-        ticket = self.report(ai_consent=True, steps="email alice@example.com sk-secret123")
-        other = self.report(user="bob@example.com")
-        with mock.patch("harnesssync.support_agent.urlopen") as api:
-            with self.assertRaises(ValueError):
-                support_agent.ask("alice@example.com", "help", consent=False)
-            with self.assertRaises(PermissionError):
-                support_agent.triage("mallory@example.com", ticket["id"])
-            with self.assertRaises(ValueError):
-                support_agent.triage(OWNER, other["id"])
-            api.assert_not_called()
-        response = {"status": "completed", "output": [{"type": "message", "content": [{"type": "output_text", "text": "Check the save flow."}]}]}
-        with mock.patch("harnesssync.support_agent.ai_config", return_value=("test-key", "configured-model")), \
-             mock.patch("harnesssync.support_agent.urlopen", return_value=io.StringIO(json.dumps(response))) as api:
-            self.assertEqual(support_agent.triage(OWNER, ticket["id"]), "Check the save flow.")
-            payload = json.loads(api.call_args.args[0].data)
-            self.assertFalse(payload["store"])
-            self.assertNotIn("tools", payload)
-            self.assertNotIn("alice@example.com", payload["input"])
-            self.assertNotIn("sk-secret123", payload["input"])
-            self.assertNotIn("bob", payload["input"])
-            self.assertNotIn("user_id", payload["input"])
+    def test_repair_handoff_requires_owner_and_excludes_private_metadata(self):
+        from harnesssync.repair_brief import build_repair_brief
+        ticket = self.report(steps="Email alice@example.com with password=secret123 or sk-privatekey. Database postgresql://user:pass@private.host/db")
+        with self.assertRaises(PermissionError):
+            build_repair_brief("outsider@example.com", ticket["id"])
+        brief = build_repair_brief(OWNER, ticket["id"])
+        for private in ("alice@example.com", "secret123", "sk-privatekey", "private.host", "user_id", "display_name"):
+            self.assertNotIn(private, brief)
+        self.assertIn("Save climb button does not work", brief)
+        self.assertIn("HS-000001", brief)
+        self.assertIn("Do not merge, deploy", brief)
+        self.assertIn("python -m pytest", brief)
+        self.assertEqual(tickets.load_feedback("alice@example.com")[0]["status"], "Received")
 
-    def test_ai_outage_and_quota_do_not_prevent_reports(self):
-        with mock.patch("harnesssync.support_agent.ai_config", return_value=("test-key", "configured-model")), \
-             mock.patch("harnesssync.support_agent.urlopen", side_effect=RuntimeError("private provider details")):
-            with self.assertRaisesRegex(ValueError, "unavailable") as raised:
-                support_agent.ask("alice@example.com", "Why can't I save?", consent=True)
-            self.assertNotIn("private provider details", str(raised.exception))
-            with self.assertRaisesRegex(ValueError, "wait"):
-                support_agent.ask("alice@example.com", "Try again", consent=True)
-        ticket = self.report()
-        self.assertEqual(ticket["status"], "Received")
-        with db_store.get_db() as conn:
-            conn.execute(db_store.support_locks.update().values(ai_count=20, ai_last=""))
-        with self.assertRaisesRegex(ValueError, "daily limit"):
-            support_agent._reserve("alice@example.com")
+    def test_repair_handoff_is_scoped_to_selected_ticket_and_missing_is_clear(self):
+        from harnesssync.repair_brief import build_repair_brief
+        first = self.report()
+        tickets.submit_feedback("bob@example.com", "Bob", "General", 4, "Unrelated confidential report", now=NOW)
+        brief = build_repair_brief(OWNER, first["id"])
+        self.assertNotIn("Unrelated confidential report", brief)
+        with self.assertRaisesRegex(ValueError, "not found"):
+            build_repair_brief(OWNER, 999)
