@@ -2,7 +2,8 @@ import streamlit as st
 
 from harnesssync.profile_manager import get_profile, save_profile, display_name_taken, DISPLAY_NAME_MAX
 from harnesssync.ui import dashboard, feedback, guide, leaderboard, log_climb, phone_app, projects, sidebar
-from harnesssync.ui.common import auth_configured, dev_mode, email_is_verified, report_crash, show_flash
+from harnesssync.ui.common import auth_configured, dev_mode, email_is_verified, render_safely, show_flash
+from harnesssync.support_config import HELP_URL
 
 st.set_page_config(page_title="HarnessSync | Climbing Intel", layout="wide")
 
@@ -20,6 +21,7 @@ def resolve_user():
                 "over time. Your climbing log is private to you."
             )
             st.button("Sign in with Google", on_click=st.login, type="primary")
+            st.link_button("Having trouble? Get help", HELP_URL)
             st.stop()
         email = st.user.get("email")
         if email and not email_is_verified(st.user.get("email_verified")):
@@ -28,6 +30,7 @@ def resolve_user():
                 "used to identify your account. Verify it with your provider and sign in again."
             )
             st.button("Sign out", on_click=st.logout)
+            st.link_button("Get sign-in help", HELP_URL)
             st.stop()
         # Falls back to `sub` only when there's no email at all. The provider
         # issues `sub` itself, so it needs no verification of its own.
@@ -46,6 +49,7 @@ def resolve_user():
         "Sign-in isn't configured. Add an `[auth]` section to `.streamlit/secrets.toml` "
         "(see DEPLOYMENT.md), or set `HARNESSSYNC_DEV_MODE=1` to run locally without login."
     )
+    st.link_button("Get help", HELP_URL)
     st.stop()
 
 
@@ -80,38 +84,28 @@ def render_page():
     show_flash()
 
     # ----------------- SIDEBAR -----------------
-    sidebar.render_account(user_id, profile)
-    sidebar.render_session_timer(user_id, profile)
+    render_safely("Account", sidebar.render_account, user_id, profile)
+    render_safely("Session timer", sidebar.render_session_timer, user_id, profile)
+    st.sidebar.link_button("Help & support", HELP_URL)
 
     # ----------------- MAIN PANEL HEADER -----------------
     st.title("🧗 HarnessSync")
     st.subheader("Log a climb. See your progress.")
 
-    log_tab, dashboard_tab, projects_tab, leaderboard_tab, mobile_tab, user_feedback_tab, guide_tab = st.tabs(
-        ["🧗 Log a climb", "📊 Progress", "🎯 Projects", "🏆 Leaderboard", "📱 Phone App", "💬 Feedback", "📖 Guide & Reference"]
-    )
-
-    with log_tab:
-        log_climb.render(user_id)
-    with dashboard_tab:
-        dashboard.render(user_id)
-    with projects_tab:
-        projects.render(user_id)
-    with leaderboard_tab:
-        leaderboard.render()
-    with mobile_tab:
-        phone_app.render(user_id)
-    with user_feedback_tab:
-        feedback.render(user_id, display_name)
-    with guide_tab:
-        guide.render()
+    sections = [
+        ("🧗 Log a climb", "Log a climb", log_climb.render, (user_id,)),
+        ("📊 Progress", "Progress", dashboard.render, (user_id,)),
+        ("🎯 Projects", "Projects", projects.render, (user_id,)),
+        ("🏆 Leaderboard", "Leaderboard", leaderboard.render, ()),
+        ("📱 Phone App", "Phone App", phone_app.render, (user_id,)),
+        ("💬 Help & report a problem", "Help", feedback.render, (user_id, display_name)),
+        ("📖 Guide & Reference", "Guide", guide.render, ()),
+    ]
+    tabs = st.tabs([s[0] for s in sections], key="main_tabs", on_change="rerun")
+    for tab, (_, area, render, args) in zip(tabs, sections):
+        if tab.open:
+            with tab:
+                render_safely(area, render, *args)
 
 
-try:
-    render_page()
-except Exception as error:
-    # Mail the traceback, then let it through unchanged: Streamlit still shows
-    # and logs the error exactly as before. st.stop() and st.rerun() raise from
-    # BaseException precisely so they pass through a handler like this one.
-    report_crash(error)
-    raise
+render_safely("App", render_page)

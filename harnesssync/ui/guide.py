@@ -42,13 +42,13 @@ def render():
         col1, col2, col3 = st.columns(3)
         with col1:
             st.markdown("### 1️⃣ Log a Climb / Session")
-            st.info("Use the sidebar form to log individual sends or projects. Record the grade, environment (Gym vs Outdoor), wall angle, and hold types.")
+            st.info("Use Log a climb for sends, Projects for attempts, and the sidebar timer for sessions. Record the grade and add route details if useful.")
         with col2:
             st.markdown("### 2️⃣ Track Projects")
             st.warning("Use the **🎯 Projects** tab to track ongoing projects, increment attempt counts, and log beta notes until you send it.")
         with col3:
             st.markdown("### 3️⃣ Analyze Pyramid & Progress")
-            st.success("Check the **📊 Dashboard** for your Send Volume Pyramid chart to ensure you are building a strong pyramid base before pushing higher grades.")
+            st.success("Check **📊 Progress** for your Send Volume Pyramid and grade progression charts.")
 
     with tab4:
         st.subheader("🔒 Your Data")
@@ -57,12 +57,19 @@ def render():
           sessions and feedback you log.
         - **Who can see it:** your climb log, projects and sessions are visible only to you. If you opt in,
           your **display name, best grade and send count** appear on the public leaderboard - never your email.
-        - **Feedback** you send is emailed to the developer along with your email address, so they can reply.
+        - **Support reports** are private to you and the owner. See status updates and replies in
+          **Help & report a problem → My reports**. Email alerts to the owner may include your account email.
+        - **Optional AI help:** questions go to OpenAI only when you allow it. Report triage requires
+          separate permission on that report. It does not receive your climbing log or account identity.
+        - **Crash reports:** we store error types, code locations and occurrence counts without exception
+          messages or account identifiers. Include the incident reference when reporting a failure.
         - **Phone app waitlist:** if you join, we store which phone you use and your answers, and email you
           about the app. Leave any time from the 📱 Phone App tab.
         - **Your control:** hide yourself from the leaderboard, download your climbs, projects and sessions
-          as CSV files, or permanently delete your account and all its data from the 👤 menu in the sidebar.
+          as CSV files, or delete your account data, support reports and queued account notifications from
+          the 👤 menu. Already-delivered emails and public GitHub reports are separate copies.
         """)
+        st.link_button("Full privacy policy", "https://milesjo-cloud-project.github.io/HarnessSync/privacy.html")
 
     st.markdown("---")
     st.caption("🔒 HarnessSync | Intelligent Climbing Log")

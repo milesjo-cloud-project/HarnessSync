@@ -11,7 +11,8 @@ from datetime import datetime, timedelta, timezone
 import sqlalchemy as sa
 
 from harnesssync.grades import grade_rank, SENT_STATUSES
-from harnesssync.db_store import get_db, rows, profiles, climbs, projects, sessions, feedback, waitlist
+from harnesssync.db_store import (get_db, rows, profiles, climbs, projects, sessions,
+                                 feedback, waitlist, support_locks, notification_outbox)
 
 DISPLAY_NAME_MAX = 30
 ROUTE_MAX = 80
@@ -79,7 +80,7 @@ def save_profile(user_id, display_name, show_on_leaderboard=True):
 def delete_account(user_id):
     """Permanently removes the profile and every row belonging to it."""
     with get_db() as conn:
-        for table in (climbs, projects, sessions, feedback, waitlist):
+        for table in (climbs, projects, sessions, feedback, waitlist, support_locks, notification_outbox):
             conn.execute(table.delete().where(table.c.user_id == user_id))
         conn.execute(profiles.delete().where(profiles.c.user_id == user_id))
 

@@ -16,6 +16,8 @@ across sessions, time your sessions, and see your grade pyramid and progression.
 - Send volume pyramid, send-style breakdown and grade progression charts
 - Opt-in leaderboard (display name only, never email)
 - CSV export and one-click account deletion
+- Private support tickets, status and owner replies, crash references, and retryable email alerts
+- Optional support assistant and consent-based owner triage specialist (requires API configuration)
 - Waitlist for a native iPhone / Android app (📱 Phone App tab)
 
 ## Run it locally
@@ -44,7 +46,8 @@ python -m pytest
 | `harnesssync/db_store.py` | Database tables and connection (SQLite locally, Postgres in production) |
 | `harnesssync/profile_manager.py` | Profiles, climbs, projects, sessions - every query scoped to the signed-in user |
 | `harnesssync/leaderboard_engine.py` | Builds the opt-in leaderboard |
-| `harnesssync/feedback_manager.py` / `notifications.py` | In-app feedback, rate limiting, email delivery |
+| `harnesssync/feedback_manager.py` / `support_notifications.py` | Private tickets, owner replies, rate limiting, durable email queue |
+| `harnesssync/support_agent.py` / `incidents.py` | Optional help and triage specialists, sanitized crash grouping |
 | `harnesssync/waitlist_manager.py` / `waitlist_report.py` | Phone app waitlist and the demand report (`python -m harnesssync.waitlist_report`) |
 | `harnesssync/grades.py` | Grade scales and conversion tables |
 | `tests/` | pytest suite |
