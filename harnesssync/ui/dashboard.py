@@ -109,7 +109,7 @@ def render(user_id):
         st.write("### 📈 Climb History")
 
         if not climbs:
-            st.info("No climbs logged yet. Use the sidebar to log your first one.")
+            st.info("No climbs logged yet. Use the Log a climb tab to log your first one.")
         else:
             history_df = pd.DataFrame(climbs)[
                 ["date", "discipline", "grade", "route_name", "status", "environment", "angle", "hold_type", "location", "notes"]
@@ -184,7 +184,7 @@ def render(user_id):
         st.write("### 🧗 Grade Progression")
 
         if not climbs:
-            st.info("Log a climb in the sidebar to see your progression here.")
+            st.info("Use the Log a climb tab to see your progression here.")
         else:
             prog_df = pd.DataFrame(climbs)
             prog_df["Rank"] = prog_df.apply(lambda r: grade_rank(r["discipline"], r["grade"]), axis=1)

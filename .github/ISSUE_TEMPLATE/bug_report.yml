@@ -1,0 +1,32 @@
+name: App problem
+description: Report a general HarnessSync failure. This report will be public.
+title: "[Bug]: "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: "For private reports, use Help & report a problem inside the app. Do not post emails, passwords, verification codes, climbing history, or private screenshots here."
+  - type: input
+    id: area
+    attributes:
+      label: Affected feature
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Include browser and device type, without personal information.
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected and actual behavior
+    validations:
+      required: true
+  - type: input
+    id: incident
+    attributes:
+      label: Incident reference (optional)
+      placeholder: INC-...

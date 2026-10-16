@@ -2,6 +2,7 @@
 
 import os
 import traceback
+import logging
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
@@ -69,29 +70,42 @@ def leaderboard_changed():
     cached_leaderboard.clear()
 
 
-def report_crash(error):
-    """Email the developer an unhandled exception.
-
-    Without this, a crash in production shows the visitor a traceback and
-    nobody is told. Deduplicated per session so a failure that repeats on
-    every rerun doesn't become a mail loop, and a no-op when email isn't
-    configured. Never raises - a reporting failure must not replace the
-    original error with a more confusing one.
-    """
+def report_crash(error, area="App"):
+    """Save a sanitized incident before attempting email. Never replaces the error."""
     try:
-        from harnesssync import notifications
-
-        signature = f"{type(error).__name__}: {error}"
-        already_sent = st.session_state.setdefault("_reported_crashes", set())
-        if signature in already_sent:
-            return
-        already_sent.add(signature)
-        notifications.send_email(
-            subject=f"HarnessSync crash: {type(error).__name__}",
-            body="".join(traceback.format_exception(type(error), error, error.__traceback__)),
-        )
+        from harnesssync.incidents import record
+        from harnesssync.support_notifications import deliver_pending
+        frames = traceback.extract_tb(error.__traceback__)
+        signature = (area, type(error).__name__, tuple((f.filename, f.lineno) for f in frames))
+        reported = st.session_state.setdefault("_reported_crashes", {})
+        if signature not in reported:
+            reported[signature] = record(error, area)
+        reference = reported[signature]
+        try:
+            deliver_pending(limit=1, event_key=f"crash:{reference}:{datetime.now(timezone.utc).date().isoformat()}")
+        except Exception:
+            logging.getLogger(__name__).warning("Crash notification delivery unavailable")
+        return reference
     except Exception:
-        pass
+        logging.getLogger(__name__).warning("Incident storage unavailable")
+        return None
+
+
+def render_safely(area, render, *args):
+    """Keep failed features isolated; Streamlit stop/rerun still propagate."""
+    from harnesssync.support_config import HELP_URL
+    try:
+        render(*args)
+    except Exception as error:
+        reference = report_crash(error, area)
+        st.error(f"{area} couldn't load. Other sections are still available.")
+        if reference:
+            st.caption(f"Issue recorded: {reference}. Include this reference in your report.")
+        else:
+            st.caption("We couldn't save an automatic report. Please use the support link.")
+        if st.button("Try again", key=f"retry_{area}"):
+            st.rerun()
+        st.link_button("Get help", HELP_URL)
 
 
 def flash(kind, message=""):

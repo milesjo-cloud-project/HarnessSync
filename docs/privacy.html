@@ -33,7 +33,7 @@
 
   <main>
     <h1>Privacy Policy</h1>
-    <p class="muted">Last updated: October 2, 2026</p>
+    <p class="muted">Last updated: October 15, 2026</p>
 
     <p>
       HarnessSync ("the app") is a free climbing log run as an independent hobby project.
@@ -49,7 +49,11 @@
         <li><strong>Your display name</strong> and whether you want to appear on the leaderboard.</li>
         <li><strong>What you log:</strong> climbs (grade, send style, date, route name, location,
           wall angle, hold type), projects and their notes, and session start/end times.</li>
-        <li><strong>Feedback</strong> you choose to send through the app.</li>
+        <li><strong>Support reports:</strong> your message, affected area, optional reproduction steps,
+          expected behavior, incident reference, rating, AI permission, and the owner's status and reply.</li>
+        <li><strong>Crash diagnostics:</strong> error type, code locations, affected feature, timestamps,
+          and occurrence counts. We exclude exception messages, local variables and account identifiers.</li>
+        <li><strong>Assistant usage:</strong> per-account daily request counts and last-request time to limit abuse.</li>
         <li><strong>Phone app waitlist:</strong> if you join it, which phone you use and any answers you
           give about what you'd want in a phone app.</li>
       </ul>
@@ -63,7 +67,14 @@
       <li>To show you your own climb history, projects, charts and sessions.</li>
       <li>To show your <strong>display name, best grade and send count</strong> on the public
         leaderboard, only if you opt in. Your email is never shown to other users.</li>
-      <li>Feedback is emailed to the developer along with your email address, so they can reply.</li>
+      <li>Support reports are private to you and the owner. Notifications may be emailed to the owner
+        with your account email; status updates and replies appear in My reports. Failed notifications
+        are queued for retry, and delivered notification bodies are cleared from that queue.</li>
+      <li>If you choose to ask the optional AI assistant, your question is sent to OpenAI. If you
+        separately allow AI triage on a report, its category, affected area, message, steps and expected
+        behavior may be sent to OpenAI. We omit your account email, display name, climbing history,
+        owner reply and other users' reports. Automated redaction catches common email and token formats
+        but cannot catch every personal detail, so do not include sensitive information.</li>
       <li>If you join the phone app waitlist, your answers help decide whether to build the app, and
         we'll email you about it. You can leave the waitlist at any time from the 📱 Phone App tab.</li>
     </ul>
@@ -77,6 +88,12 @@
       <li><strong>Neon</strong> stores the database (hosted in the United States).</li>
       <li><strong>Gmail</strong> delivers feedback messages to the developer.</li>
       <li><strong>Google Forms</strong> collects answers to the phone app survey linked from our home page.</li>
+      <li><strong>OpenAI</strong> processes optional assistant questions and consented report triage when enabled.
+        Requests use <code>store=false</code>; provider processing and retention still follow
+        <a href="https://platform.openai.com/docs/guides/your-data">OpenAI's API data controls</a>.
+        Assistant answers are kept only in the app session, not our support database.</li>
+      <li><strong>GitHub</strong> hosts public reports submitted through the fallback support link.
+        GitHub requires its own account; these reports are public and separate from your app account.</li>
     </ul>
 
     <h2>Phone app survey</h2>
@@ -85,7 +102,7 @@
       which phone you use and which features you'd want, plus your email address if you choose to
       give it so we can tell you when the app is ready. Answers are stored in Google Forms, used only to
       decide whether and how to build a phone app, and never sold or shared. To have your answers
-      deleted, ask through the <strong>💬 Feedback</strong> tab in the app.
+      deleted, ask through <strong>Help &amp; report a problem</strong> in the app.
       Google's handling of the form is covered by <a href="https://policies.google.com/privacy">Google's privacy policy</a>.
     </p>
 
@@ -96,7 +113,10 @@
         <li><strong>Export:</strong> download your climbs and session history as CSV files from the Dashboard,
           and your active projects as a CSV file from the Projects tab.</li>
         <li><strong>Delete:</strong> use "Delete my account &amp; data" in the 👤 account menu. It
-          permanently removes your profile, climbs, projects, sessions, feedback and waitlist signup right away.</li>
+          permanently removes your profile, climbs, projects, sessions, support reports, assistant usage,
+          queued notifications linked to your account, and waitlist signup right away. Anonymous crash
+          counts remain. Copies already delivered to the owner's email and public GitHub reports are
+          separate; request removal of those copies through support.</li>
       </ul>
     </div>
 
@@ -108,8 +128,8 @@
 
     <h2>Contact</h2>
     <p>
-      Questions or requests: use the <strong>💬 Feedback</strong> tab in the app, and they go
-      straight to the developer.
+      Questions or requests: use <strong>Help &amp; report a problem</strong> in the app.
+      If you cannot use the app, see <a href="support.html">support options</a>.
     </p>
 
     <footer>

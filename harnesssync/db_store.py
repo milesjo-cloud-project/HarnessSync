@@ -91,6 +91,45 @@ feedback = sa.Table(
     sa.Column("category", sa.String(20), nullable=False),
     sa.Column("rating", sa.Integer, nullable=False),
     sa.Column("message", sa.Text, nullable=False),
+    sa.Column("area", sa.String(40), nullable=False, server_default="General"),
+    sa.Column("steps", sa.Text, nullable=False, server_default=""),
+    sa.Column("expected", sa.Text, nullable=False, server_default=""),
+    sa.Column("status", sa.String(30), nullable=False, server_default="Received"),
+    sa.Column("owner_reply", sa.Text, nullable=False, server_default=""),
+    sa.Column("updated_at", sa.String(32), nullable=False, server_default=""),
+    sa.Column("incident_ref", sa.String(40), nullable=False, server_default=""),
+    sa.Column("ai_consent", sa.Boolean, nullable=False, server_default=sa.false()),
+)
+
+support_locks = sa.Table(
+    "support_locks", metadata,
+    sa.Column("user_id", sa.String(320), primary_key=True),
+    sa.Column("ai_day", sa.String(10), nullable=False, server_default=""),
+    sa.Column("ai_count", sa.Integer, nullable=False, server_default="0"),
+    sa.Column("ai_last", sa.String(32), nullable=False, server_default=""),
+)
+
+incidents = sa.Table(
+    "incidents", metadata,
+    sa.Column("id", sa.String(40), primary_key=True),
+    sa.Column("area", sa.String(40), nullable=False),
+    sa.Column("error_type", sa.String(100), nullable=False),
+    sa.Column("diagnostic", sa.Text, nullable=False),
+    sa.Column("first_seen", sa.String(32), nullable=False),
+    sa.Column("last_seen", sa.String(32), nullable=False),
+    sa.Column("occurrences", sa.Integer, nullable=False, server_default="1"),
+)
+
+notification_outbox = sa.Table(
+    "notification_outbox", metadata,
+    sa.Column("event_key", sa.String(100), primary_key=True),
+    sa.Column("user_id", sa.String(320), nullable=False, server_default=""),
+    sa.Column("subject", sa.String(200), nullable=False),
+    sa.Column("body", sa.Text, nullable=False),
+    sa.Column("attempts", sa.Integer, nullable=False, server_default="0"),
+    sa.Column("next_attempt", sa.String(32), nullable=False),
+    sa.Column("sent_at", sa.String(32), nullable=True),
+    sa.Column("lease", sa.String(40), nullable=False, server_default=""),
 )
 
 # Signed-in users who want a native phone app. One row per account, so the
@@ -165,6 +204,14 @@ def _add_missing_columns(engine):
     additions = [
         ("climbs", "notes", "TEXT NOT NULL DEFAULT ''"),
         ("profiles", "active_session_started", "VARCHAR(32)"),
+        ("feedback", "area", "VARCHAR(40) NOT NULL DEFAULT 'General'"),
+        ("feedback", "steps", "TEXT NOT NULL DEFAULT ''"),
+        ("feedback", "expected", "TEXT NOT NULL DEFAULT ''"),
+        ("feedback", "status", "VARCHAR(30) NOT NULL DEFAULT 'Received'"),
+        ("feedback", "owner_reply", "TEXT NOT NULL DEFAULT ''"),
+        ("feedback", "updated_at", "VARCHAR(32) NOT NULL DEFAULT ''"),
+        ("feedback", "incident_ref", "VARCHAR(40) NOT NULL DEFAULT ''"),
+        ("feedback", "ai_consent", "BOOLEAN NOT NULL DEFAULT FALSE"),
     ]
     for table, column, ddl in additions:
         if table not in tables:

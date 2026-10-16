@@ -65,12 +65,56 @@ anyone could act as anyone.
 
 ## Keep in mind
 
-- **Secrets file:** only paste the sections above. Drop the leftover `[anthropic]`
-  and `[admin]` sections from the removed features.
+- **Secrets file:** use the sections in `.streamlit/secrets.toml.example`. Drop leftover
+  `[anthropic]` and `[admin]` sections from removed features. Owner access now uses `[support]`.
 - **Sleeping apps:** Community Cloud puts apps to sleep after a stretch with no visitors.
   The next visitor sees a "wake up" button for a few seconds. Data is unaffected.
 - **Backups:** Neon keeps point-in-time history on the free tier (see *Restore* in its dashboard).
 - **Feedback email** is rate-limited per user (one message per 2 minutes, 5 per day).
+
+## Support dashboard and assistant
+
+Add this to the deployed secrets:
+
+```toml
+[support]
+owner_emails = ["your-verified-google-email@example.com"]
+```
+
+Sign in with that verified
+Google account, then open **Help & report a problem → Owner support dashboard**. Local
+`dev:` identities never receive owner access. Reports and additive schema upgrades work
+without AI or email configuration; existing feedback becomes Received tickets.
+
+To enable the optional support and triage specialists, set `openai_api_key` and `model`
+under `[support]`. Choose a Responses-compatible model available to your API project.
+Alternatively use `OPENAI_API_KEY` and `HARNESSSYNC_SUPPORT_MODEL`. No default model or
+live API key is shipped. Set an API project budget before enabling it. Requests are capped
+at 20/account/UTC day, at least 15 seconds apart, with 800 output tokens, no provider
+retries, and a 20-second HTTP timeout. Failed calls count toward this limit.
+
+AI requests require explicit user permission. Owner triage only includes the selected,
+consented report. The model has no execution or data-changing tools. Its investigation
+brief is a suggestion, never a deployed fix. Use the downloadable repair brief to reproduce
+an issue, implement and test the change, review it, deploy, and verify before marking Fixed.
+Replies are visible in My reports; users are not sent status-update emails.
+
+Email alerts are saved in the database before delivery. New reports and crashes attempt
+their own notification immediately. Retry due notifications from the owner dashboard, or
+run `python -m harnesssync.support_notifications` against the same production database
+and email settings using an external scheduler. Streamlit does not run a reliable background
+worker. A CLI run delivers at most 25 due messages; failures back off up to six hours.
+Without a scheduled worker or owner retry, failed messages stay queued. SMTP may deliver
+duplicates if a process stops after sending; references identify the same report/incident.
+
+Publish `docs/support.html` with the Pages site alongside the app update. Confirm GitHub
+Issues is enabled for this repository and the public fallback form works; GitHub reports
+require a GitHub account. Never post private account data there. Test sign-in failure,
+report submission, owner reply, denied owner access, and AI/email outage behavior before
+announcing the feature. Existing deployments must use hosted Postgres to retain reports.
+
+## Phone app demand report
+
 - **Phone app waitlist:** to see how many people want an iPhone/Android app and why, run
   `DATABASE_URL="<your Neon URL>" python -m harnesssync.waitlist_report` from the repo root. The
   emails are in the `waitlist` table's `user_id` column if you want to contact people.
