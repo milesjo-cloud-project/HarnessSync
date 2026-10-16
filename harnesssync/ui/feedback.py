@@ -1,9 +1,10 @@
-"""Help, private reports, optional AI support, and owner review."""
-import json
+"""Static help, private reports, and an owner-controlled repair handoff."""
 import streamlit as st
 import sqlalchemy as sa
 
-from harnesssync import feedback_manager as tickets, support_agent
+from harnesssync import feedback_manager as tickets
+from harnesssync.support_help import HELP
+from harnesssync.repair_brief import build_repair_brief
 from harnesssync.db_store import get_db, notification_outbox
 from harnesssync.incidents import owner_incidents
 from harnesssync.support_config import HELP_URL, is_owner
@@ -16,29 +17,8 @@ def render(user_id, display_name):
     st.caption("Get help, tell us what failed, and follow your reports here.")
     st.link_button("Can't sign in or use the app?", HELP_URL)
     with st.expander("Quick help"):
-        topic = st.selectbox("What do you need help with?", list(support_agent.HELP))
-        st.write(support_agent.HELP[topic])
-    with st.expander("Ask the support assistant"):
-        st.caption("Optional AI guidance. It cannot access your account or change anything. Answers may be mistaken.")
-        if support_agent.configured():
-            with st.form("support_question"):
-                question = st.text_area("Your app question", max_chars=2000)
-                consent = st.checkbox("Share this question with OpenAI to get an answer")
-                asked = st.form_submit_button("Ask assistant")
-            if asked:
-                try:
-                    with st.spinner("Checking the app guide..."):
-                        answer = support_agent.ask(user_id, question, consent)
-                    st.session_state["support_answer"] = (user_id, answer)
-                except ValueError as error:
-                    st.warning(str(error))
-            saved_answer = st.session_state.get("support_answer")
-            if saved_answer and saved_answer[0] == user_id:
-                st.text(saved_answer[1])
-                st.caption("Still stuck? Submit a report below. The assistant has not created one for you.")
-        else:
-            st.info("The assistant isn't enabled yet. Quick help and reports are available.")
-
+        topic = st.selectbox("What do you need help with?", list(HELP))
+        st.write(HELP[topic])
     st.subheader("Send a report or idea")
     # Rotate form keys only after success; validation/storage failures retain the draft.
     version = st.session_state.get("report_form_version", 0)
@@ -51,13 +31,12 @@ def render(user_id, display_name):
                              placeholder="What did you click? Include your browser and phone/computer type if relevant.")
         expected = st.text_area("What did you expect? (optional)", max_chars=tickets.MESSAGE_MAX)
         reference = st.text_input("Incident reference (optional)", max_chars=40, placeholder="INC-...")
-        st.caption("Reports are private to you and the owner. Don't include passwords, codes, or sensitive personal details.")
-        ai_consent = st.checkbox("Allow OpenAI to help the owner triage this report (optional)")
+        st.caption("Reports are visible to you and the owner. The owner may use reviewed, redacted details with coding tools to investigate. Don't include passwords, codes, or sensitive personal details.")
         submitted = st.form_submit_button("Send report", type="primary", width="stretch")
     if submitted:
         try:
             entry = tickets.submit_feedback(user_id, display_name, category, rating, message,
-                area=area, steps=steps, expected=expected, incident_ref=reference, ai_consent=ai_consent)
+                area=area, steps=steps, expected=expected, incident_ref=reference)
         except ValueError as error:
             st.warning(str(error))
         except Exception:
@@ -121,19 +100,16 @@ def render_owner(actor):
             else:
                 flash("success", "Report updated. The reporter can see your reply in My reports.")
                 st.rerun()
-        if support_agent.configured() and ticket["ai_consent"]:
-            if st.button("Ask triage subagent", key=f"triage_{ticket_id}"):
-                try:
-                    with st.spinner("Preparing investigation brief..."):
-                        st.text(support_agent.triage(actor, ticket_id))
-                except ValueError as error:
-                    st.warning(str(error))
-        else:
-            st.caption("AI triage requires assistant configuration and this reporter's permission.")
-        brief = {key: ticket[key] for key in ("id", "area", "category", "message", "steps", "expected", "incident_ref")}
-        brief["workflow"] = "Reproduce in isolation, implement a fix, run regression tests, review, deploy, verify, then update this ticket."
-        st.download_button("Download repair brief", json.dumps(brief, indent=2),
-                           file_name=f"{tickets.ticket_ref(ticket_id)}-repair.json", mime="application/json")
+        with st.expander("Prepare a fix with Codex Cloud"):
+            st.write("Review the repair brief, then paste it into a Codex Cloud task for this repository.")
+            st.caption("Account identifiers are omitted and common secrets are redacted. Review the text for other private details before sharing. Nothing is sent automatically.")
+            brief = st.text_area("Review repair brief before sharing",
+                                 value=build_repair_brief(actor, ticket_id),
+                                 key=f"repair_brief_{ticket_id}", height=300)
+            st.download_button("Download Codex repair brief", brief,
+                               file_name=f"{tickets.ticket_ref(ticket_id)}-repair.md", mime="text/markdown")
+            st.link_button("Codex Cloud setup guide", "https://learn.chatgpt.com/docs/cloud")
+            st.caption("Codex prepares code and tests. Review the PR and merge it yourself when ready to publish. Keep this report open until the deployed fix is verified.")
     else:
         st.info("No reports match this filter.")
     st.subheader("Crash incidents")

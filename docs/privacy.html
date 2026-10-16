@@ -50,10 +50,10 @@
         <li><strong>What you log:</strong> climbs (grade, send style, date, route name, location,
           wall angle, hold type), projects and their notes, and session start/end times.</li>
         <li><strong>Support reports:</strong> your message, affected area, optional reproduction steps,
-          expected behavior, incident reference, rating, AI permission, and the owner's status and reply.</li>
+          expected behavior, incident reference, rating, and the owner's status and reply. Legacy AI permissions from the retired assistant may remain in older records but are no longer used.</li>
         <li><strong>Crash diagnostics:</strong> error type, code locations, affected feature, timestamps,
           and occurrence counts. We exclude exception messages, local variables and account identifiers.</li>
-        <li><strong>Assistant usage:</strong> per-account daily request counts and last-request time to limit abuse.</li>
+
         <li><strong>Phone app waitlist:</strong> if you join it, which phone you use and any answers you
           give about what you'd want in a phone app.</li>
       </ul>
@@ -70,11 +70,10 @@
       <li>Support reports are private to you and the owner. Notifications may be emailed to the owner
         with your account email; status updates and replies appear in My reports. Failed notifications
         are queued for retry, and delivered notification bodies are cleared from that queue.</li>
-      <li>If you choose to ask the optional AI assistant, your question is sent to OpenAI. If you
-        separately allow AI triage on a report, its category, affected area, message, steps and expected
-        behavior may be sent to OpenAI. We omit your account email, display name, climbing history,
-        owner reply and other users' reports. Automated redaction catches common email and token formats
-        but cannot catch every personal detail, so do not include sensitive information.</li>
+      <li>The app does not run an AI chatbot or automatically send reports to a model. To investigate
+        a problem, the owner may manually share reviewed, redacted reproduction details with Codex Cloud.
+        Repair exports omit account identifiers and climbing history and redact common email/token
+        formats. The owner reviews for remaining private details before sharing.</li>
       <li>If you join the phone app waitlist, your answers help decide whether to build the app, and
         we'll email you about it. You can leave the waitlist at any time from the 📱 Phone App tab.</li>
     </ul>
@@ -88,10 +87,9 @@
       <li><strong>Neon</strong> stores the database (hosted in the United States).</li>
       <li><strong>Gmail</strong> delivers feedback messages to the developer.</li>
       <li><strong>Google Forms</strong> collects answers to the phone app survey linked from our home page.</li>
-      <li><strong>OpenAI</strong> processes optional assistant questions and consented report triage when enabled.
-        Requests use <code>store=false</code>; provider processing and retention still follow
-        <a href="https://platform.openai.com/docs/guides/your-data">OpenAI's API data controls</a>.
-        Assistant answers are kept only in the app session, not our support database.</li>
+      <li><strong>OpenAI Codex Cloud</strong> may process reviewed reproduction details manually
+        shared by the owner to prepare code fixes. It has no automatic connection to the support
+        database. Processing follows the owner's applicable OpenAI account settings and terms.</li>
       <li><strong>GitHub</strong> hosts public reports submitted through the fallback support link.
         GitHub requires its own account; these reports are public and separate from your app account.</li>
     </ul>
@@ -113,7 +111,7 @@
         <li><strong>Export:</strong> download your climbs and session history as CSV files from the Dashboard,
           and your active projects as a CSV file from the Projects tab.</li>
         <li><strong>Delete:</strong> use "Delete my account &amp; data" in the 👤 account menu. It
-          permanently removes your profile, climbs, projects, sessions, support reports, assistant usage,
+          permanently removes your profile, climbs, projects, sessions, support reports, legacy assistant usage,
           queued notifications linked to your account, and waitlist signup right away. Anonymous crash
           counts remain. Copies already delivered to the owner's email and public GitHub reports are
           separate; request removal of those copies through support.</li>

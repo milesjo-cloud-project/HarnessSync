@@ -65,6 +65,9 @@ class TestApp(unittest.TestCase):
             [t.label for t in at.tabs][:7],
             ["🧗 Log a climb", "📊 Progress", "🎯 Projects", "🏆 Leaderboard", "📱 Phone App", "💬 Help & report a problem", "📖 Guide & Reference"],
         )
+        at = self._tab(at, "💬 Help & report a problem")
+        self.assertNotIn("Ask the support assistant", [e.label for e in at.expander])
+        self.assertFalse(any("OpenAI" in w.label or "Ollama" in w.label for w in at.checkbox))
 
     def test_log_climb_from_main_flow(self):
         at = self._run()
@@ -137,6 +140,9 @@ class TestApp(unittest.TestCase):
         owner.secrets["email"] = {}
         owner.run()
         self.assertEqual([e.value for e in owner.exception], [])
+        self.assertIn("Prepare a fix with Codex Cloud", [e.label for e in owner.expander])
+        brief = next(w for w in owner.text_area if w.label == "Review repair brief before sharing")
+        self.assertIn("Can't save a climb", brief.value)
         next(w for w in owner.selectbox if w.label == "Report status").set_value("Investigating")
         next(w for w in owner.text_area if w.label == "Reply visible to the reporter").set_value("Checking this now.")
         self._button(owner, "Save status and reply").click().run()
