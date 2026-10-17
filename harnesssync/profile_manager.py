@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 
 import sqlalchemy as sa
 
-from harnesssync.grades import grade_rank, SENT_STATUSES
+from harnesssync.grades import grade_rank, SENT_STATUSES, GRADES_BY_DISCIPLINE
 from harnesssync.db_store import (get_db, rows, profiles, climbs, projects, sessions,
                                  feedback, waitlist, support_locks, notification_outbox)
 
@@ -106,16 +106,38 @@ def best_send(climb_list, discipline):
 
 def best_climb(user_id, discipline):
     """The hardest *sent* climb for a climber in a discipline, or None."""
-    return best_send(get_climbs(user_id, discipline), discipline)
+    if not user_id:
+        return None
+    with get_db() as conn:
+        result = conn.execute(sa.select(climbs).where(
+            climbs.c.user_id == user_id, climbs.c.discipline == discipline,
+            climbs.c.status.in_(SENT_STATUSES),
+        ).order_by(_grade_rank_expression(discipline).desc(), climbs.c.date.desc(), climbs.c.id.desc()).limit(1))
+        found = result.mappings().first()
+        return dict(found) if found else None
+
+
+def _grade_rank_expression(discipline):
+    ranks = {grade: rank for rank, grade in enumerate(GRADES_BY_DISCIPLINE.get(discipline, []))}
+    if not ranks:
+        return sa.literal(-1)
+    return sa.case(ranks, value=climbs.c.grade, else_=-1)
+
+
+def _best_send_rank(conn, user_id, discipline):
+    """Return one scalar instead of transferring an entire private climb history."""
+    result = conn.execute(sa.select(sa.func.max(_grade_rank_expression(discipline))).where(
+        climbs.c.user_id == user_id, climbs.c.discipline == discipline,
+        climbs.c.status.in_(SENT_STATUSES),
+    )).scalar_one()
+    return -1 if result is None else result
 
 
 def log_climb(user_id, discipline, grade, status, climb_date, route_name="", location="",
               environment="Gym", angle="Vertical", hold_type="Mixed", notes=""):
     """Appends one logged climb. Returns PR alert strings if it's a new best send."""
-    previous_best = best_climb(user_id, discipline)
-    previous_best_rank = grade_rank(discipline, previous_best["grade"]) if previous_best else -1
-
     with get_db() as conn:
+        previous_best_rank = _best_send_rank(conn, user_id, discipline) if status in SENT_STATUSES else -1
         conn.execute(climbs.insert().values(
             user_id=user_id, date=climb_date, discipline=discipline, grade=grade, status=status,
             route_name=_clean(route_name, ROUTE_MAX), location=_clean(location, LOCATION_MAX),
@@ -233,16 +255,14 @@ def graduate_project(user_id, project_id, send_date, send_status="Redpoint"):
         if not found:
             return []
         p = found[0]
-        previous_best = best_send(rows(conn.execute(sa.select(climbs).where(
-            climbs.c.user_id == user_id, climbs.c.discipline == p["discipline"]
-        ))), p["discipline"])
+        previous_best_rank = _best_send_rank(conn, user_id, p["discipline"])
         # Claim and insert in one transaction: retries cannot duplicate a send,
         # and a failed insert restores the project.
         conn.execute(climbs.insert().values(**{
             key: p[key] for key in ("user_id", "discipline", "grade", "route_name",
                                    "location", "environment", "angle", "hold_type", "notes")
         }, date=send_date, status=send_status))
-        if previous_best is None or grade_rank(p["discipline"], p["grade"]) > grade_rank(p["discipline"], previous_best["grade"]):
+        if grade_rank(p["discipline"], p["grade"]) > previous_best_rank:
             return [f"🏆 New {p['discipline']} personal best: {p['grade']}!"]
         return []
 

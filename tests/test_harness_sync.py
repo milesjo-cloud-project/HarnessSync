@@ -109,6 +109,39 @@ class TestHarnessSync(unittest.TestCase):
         self.assertEqual(alerts, [])
         self.assertEqual(profile_manager.best_climb(user, "Boulder")["grade"], "V2")
 
+    def test_personal_best_queries_preserve_ranking_ties_and_user_isolation(self):
+        user = self._user("alice@example.com")
+        other = self._user("other@example.com")
+        for grade, date, route in (("V2", "2026-09-01", "Easy"),
+                                   ("V6", "2026-09-02", "Older"),
+                                   ("V6", "2026-09-03", "Newer"),
+                                   ("retired", TODAY, "Old scale")):
+            profile_manager.log_climb(user, "Boulder", grade, "Sent", date, route_name=route)
+        profile_manager.log_climb(other, "Boulder", "V17", "Sent", TODAY)
+        profile_manager.log_climb(user, "Boulder", "V15", "Attempt", TODAY)
+        profile_manager.log_climb(user, "Rope", "5.15d", "Sent", TODAY)
+        expected = profile_manager.best_send(profile_manager.get_climbs(user), "Boulder")
+        with mock.patch.object(profile_manager, "get_climbs", side_effect=AssertionError("History must not be loaded")):
+            self.assertEqual(profile_manager.best_climb(user, "Boulder"), expected)
+            self.assertEqual(profile_manager.log_climb(user, "Boulder", "V5", "Sent", TODAY), [])
+            self.assertEqual(len(profile_manager.log_climb(user, "Boulder", "V7", "Flash", TODAY)), 1)
+            profile_manager.log_project(user, "Boulder", "V8", TODAY)
+            project_id = profile_manager.get_projects(user)[0]["id"]
+            self.assertEqual(len(profile_manager.graduate_project(user, project_id, TODAY)), 1)
+        self.assertIsNone(profile_manager.best_climb("", "Boulder"))
+        self.assertIsNone(profile_manager.best_climb("nobody@example.com", "Boulder"))
+
+    def test_non_send_skips_personal_best_lookup(self):
+        user = self._user("alice@example.com")
+        with mock.patch.object(profile_manager, "_best_send_rank", side_effect=AssertionError("No PR lookup for attempts")):
+            self.assertEqual(profile_manager.log_climb(user, "Boulder", "V9", "Attempt", TODAY), [])
+
+    def test_unknown_grades_do_not_create_personal_best_alerts(self):
+        user = self._user("alice@example.com")
+        self.assertEqual(profile_manager.log_climb(user, "Boulder", "old-grade", "Sent", TODAY), [])
+        self.assertEqual(profile_manager.best_climb(user, "Boulder")["grade"], "old-grade")
+        self.assertEqual(len(profile_manager.log_climb(user, "Boulder", "VB", "Sent", TODAY)), 1)
+
     def test_leaderboard_engine(self):
         a = self._user("a@example.com", "ClimberA")
         b = self._user("b@example.com", "ClimberB")

@@ -98,6 +98,7 @@ def render(user_id):
         st.download_button(
             "⬇️ Download my sessions (CSV)", sessions_df.to_csv(index=False),
             file_name="harnesssync_sessions.csv", mime="text/csv",
+            on_click="ignore",
         )
 
     st.markdown("---")
@@ -119,6 +120,7 @@ def render(user_id):
             st.download_button(
                 "⬇️ Download my climbs (CSV)", history_df.to_csv(index=False),
                 file_name="harnesssync_climbs.csv", mime="text/csv",
+                on_click="ignore",
             )
 
             with st.expander("🛠️ Manage / Edit / Delete Climbs"):
