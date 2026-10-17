@@ -56,7 +56,7 @@ def display_name_taken(display_name, exclude_user_id=None):
         return conn.execute(query).first() is not None
 
 
-def save_profile(user_id, display_name, show_on_leaderboard=True):
+def save_profile(user_id, display_name, show_on_leaderboard=False):
     """Creates the profile on first sign-in, updates it afterwards."""
     display_name = _clean(display_name, DISPLAY_NAME_MAX)
     if not display_name:
@@ -223,21 +223,28 @@ def delete_project(user_id, project_id):
 
 def graduate_project(user_id, project_id, send_date, send_status="Redpoint"):
     """Moves a project into the climb log as a send. Returns PR alerts."""
+    if send_status not in SENT_STATUSES:
+        raise ValueError("Choose a completed send style.")
     with get_db() as conn:
         found = rows(conn.execute(
-            sa.select(projects).where(projects.c.id == project_id, projects.c.user_id == user_id)
+            projects.delete().where(projects.c.id == project_id, projects.c.user_id == user_id)
+            .returning(*projects.c)
         ))
-    if not found:
+        if not found:
+            return []
+        p = found[0]
+        previous_best = best_send(rows(conn.execute(sa.select(climbs).where(
+            climbs.c.user_id == user_id, climbs.c.discipline == p["discipline"]
+        ))), p["discipline"])
+        # Claim and insert in one transaction: retries cannot duplicate a send,
+        # and a failed insert restores the project.
+        conn.execute(climbs.insert().values(**{
+            key: p[key] for key in ("user_id", "discipline", "grade", "route_name",
+                                   "location", "environment", "angle", "hold_type", "notes")
+        }, date=send_date, status=send_status))
+        if previous_best is None or grade_rank(p["discipline"], p["grade"]) > grade_rank(p["discipline"], previous_best["grade"]):
+            return [f"🏆 New {p['discipline']} personal best: {p['grade']}!"]
         return []
-    p = found[0]
-    alerts = log_climb(
-        user_id, p["discipline"], p["grade"], send_status, send_date,
-        route_name=p["route_name"], location=p["location"],
-        environment=p["environment"], angle=p["angle"], hold_type=p["hold_type"],
-        notes=p["notes"],
-    )
-    delete_project(user_id, project_id)
-    return alerts
 
 
 # ----------------- SESSIONS -----------------
@@ -248,18 +255,24 @@ def log_session(user_id, started_at, ended_at):
     it rather than only the duration, so start, end and duration still agree
     with each other in the history table and the CSV export.
     """
+    with get_db() as conn:
+        return _log_session(conn, user_id, started_at, ended_at)
+
+
+def _log_session(conn, user_id, started_at, ended_at):
+    if ended_at < started_at:
+        raise ValueError("A session cannot end before it starts.")
     duration_min = round((ended_at - started_at).total_seconds() / 60, 1)
     if duration_min > MAX_SESSION_MIN:
         duration_min = float(MAX_SESSION_MIN)
         ended_at = started_at + timedelta(minutes=MAX_SESSION_MIN)
-    with get_db() as conn:
-        conn.execute(sessions.insert().values(
-            user_id=user_id,
-            date=started_at.date().isoformat(),
-            started_at=started_at.isoformat(timespec="minutes"),
-            ended_at=ended_at.isoformat(timespec="minutes"),
-            duration_min=duration_min,
-        ))
+    conn.execute(sessions.insert().values(
+        user_id=user_id,
+        date=started_at.date().isoformat(),
+        started_at=started_at.isoformat(timespec="minutes"),
+        ended_at=ended_at.isoformat(timespec="minutes"),
+        duration_min=duration_min,
+    ))
     return duration_min
 
 
@@ -300,9 +313,9 @@ def end_session_timer(user_id, ended_at):
                    profiles.c.active_session_started == started_at.isoformat(timespec="seconds"))
             .values(active_session_started=None)
         ).rowcount
-    if not cleared:
-        return None
-    return log_session(user_id, started_at, ended_at)
+        if not cleared:
+            return None
+        return _log_session(conn, user_id, started_at, ended_at)
 
 
 def get_sessions(user_id):

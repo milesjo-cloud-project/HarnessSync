@@ -33,7 +33,7 @@
 
   <main>
     <h1>Privacy Policy</h1>
-    <p class="muted">Last updated: October 15, 2026</p>
+    <p class="muted">Last updated: October 17, 2026</p>
 
     <p>
       HarnessSync ("the app") is a free climbing log run as an independent hobby project.
@@ -91,7 +91,10 @@
         shared by the owner to prepare code fixes. It has no automatic connection to the support
         database. Processing follows the owner's applicable OpenAI account settings and terms.</li>
       <li><strong>GitHub</strong> hosts public reports submitted through the fallback support link.
-        GitHub requires its own account; these reports are public and separate from your app account.</li>
+        GitHub requires its own account; these reports are public and separate from your app account.
+        When the owner enables scheduled email retries, GitHub Actions also runs the delivery worker,
+        which temporarily reads queued notification contents from the database to email the owner.
+        The worker logs counts and generic errors, not report contents or account addresses.</li>
     </ul>
 
     <h2>Phone app survey</h2>

@@ -97,6 +97,8 @@ their own notification immediately. Retry due notifications from the owner dashb
 run `python -m harnesssync.support_notifications` against the same production database
 and email settings using an external scheduler. Streamlit does not run a reliable background
 worker. A CLI run delivers at most 25 due messages; failures back off up to six hours.
+The included [GitHub Actions scheduler](docs/support-email-scheduler.md) runs independently
+of your computer and the app's sleep state once configured and enabled.
 Without a scheduled worker or owner retry, failed messages stay queued. SMTP may deliver
 duplicates if a process stops after sending; references identify the same report/incident.
 

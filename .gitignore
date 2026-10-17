@@ -1,6 +1,7 @@
 __pycache__/
 *.pyc
 .venv/
+.test-tmp/
 .streamlit/secrets.toml
 .vscode/
 

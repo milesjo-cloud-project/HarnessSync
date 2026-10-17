@@ -45,7 +45,7 @@ def render(user_id):
 
     active_projects = get_projects(user_id)
     if not active_projects:
-        st.info("No active projects right now. Use the form above or the sidebar (set status to Project) to add one!")
+        st.info("No active projects right now. Use the form above or choose Project in Log a climb to add one!")
     else:
         projects_df = pd.DataFrame(active_projects)[
             ["date", "discipline", "grade", "route_name", "location", "environment", "angle", "hold_type", "attempts", "notes"]

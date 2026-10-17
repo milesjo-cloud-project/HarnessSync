@@ -78,6 +78,13 @@ class TestApp(unittest.TestCase):
         total = next(m for m in at.metric if m.label == "Total Climbs Logged")
         self.assertEqual(total.value, "1")
 
+    def test_deselecting_discipline_does_not_crash(self):
+        at = self._run()
+        at.segmented_control(key="quick_log_discipline").set_value(None)
+        at = self._run(at)
+        self.assertTrue(any("Choose Boulder or Rope" in e.value for e in at.info))
+        self.assertEqual(profile_manager.get_climbs(USER), [])
+
     def test_session_timer(self):
         at = self._run()
         self._button(at, "▶️ Start Session").click()

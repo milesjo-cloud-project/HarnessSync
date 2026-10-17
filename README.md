@@ -57,6 +57,8 @@ python -m pytest
 ## Deploying
 
 See [DEPLOYMENT.md](DEPLOYMENT.md) (Streamlit Community Cloud + Google sign-in + Neon Postgres).
+For unattended support email retries, enable the included
+[GitHub Actions scheduler](docs/support-email-scheduler.md). It runs while your computer is off.
 
 ## Fixing reported problems
 

@@ -1,5 +1,6 @@
 .git
 .venv
+.test-tmp
 .vscode
 .devcontainer
 __pycache__
