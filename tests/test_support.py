@@ -4,13 +4,15 @@ import shutil
 import sqlite3
 import tempfile
 import unittest
+import io
+from contextlib import redirect_stdout
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from unittest import mock
 
 import sqlalchemy as sa
 
-from harnesssync import db_store, feedback_manager as tickets, incidents, profile_manager
+from harnesssync import db_store, feedback_manager as tickets, incidents, profile_manager, notifications
 from harnesssync import support_notifications as mail
 from harnesssync.support_config import is_owner
 
@@ -84,6 +86,81 @@ class TestSupport(unittest.TestCase):
             entry = conn.execute(sa.select(db_store.notification_outbox)).mappings().one()
         self.assertTrue(entry["sent_at"])
         self.assertEqual(entry["body"], "")
+
+    def test_scheduler_rejects_missing_or_local_database_before_access(self):
+        for url in ("", "sqlite:///accidental.db", "not a database URL", "postgresql:///missing-host"):
+            with self.subTest(url=url), mock.patch.dict(os.environ, {
+                "DATABASE_URL": url, "HARNESSSYNC_EMAIL_ADDRESS": "sender@example.invalid",
+                "HARNESSSYNC_EMAIL_APP_PASSWORD": "fictional-password",
+            }), mock.patch.object(mail, "configure") as configure, mock.patch.object(mail, "deliver_pending") as deliver:
+                with redirect_stdout(io.StringIO()):
+                    self.assertEqual(mail.main(["--scheduled"]), 1)
+                configure.assert_not_called()
+                deliver.assert_not_called()
+
+    def test_scheduler_rejects_missing_email_configuration(self):
+        with mock.patch.dict(os.environ, {"DATABASE_URL": "postgresql://fake:fake@db.example.invalid/test"}), \
+             mock.patch.object(mail, "configure") as configure, redirect_stdout(io.StringIO()):
+            self.assertEqual(mail.main(["--scheduled"]), 1)
+        configure.assert_not_called()
+
+    def test_environment_email_configuration_is_complete_and_does_not_mix_secrets(self):
+        with mock.patch.dict(os.environ, {"HARNESSSYNC_EMAIL_ADDRESS": "sender@example.invalid"}):
+            self.assertFalse(notifications.is_configured())
+            with mock.patch.dict(os.environ, {"HARNESSSYNC_EMAIL_APP_PASSWORD": "fake"}):
+                self.assertTrue(notifications.is_configured())
+                with mock.patch("harnesssync.notifications.smtplib.SMTP_SSL") as smtp:
+                    self.assertTrue(notifications.send_email("Fictional report", "Test only"))
+                smtp.return_value.__enter__.return_value.sendmail.assert_called_once()
+                args = smtp.return_value.__enter__.return_value.sendmail.call_args.args
+                self.assertEqual(args[:2], ("sender@example.invalid", ["sender@example.invalid"]))
+
+    def test_scheduled_worker_reports_failure_then_retries_without_private_logs(self):
+        self.report()
+        environment = {
+            "DATABASE_URL": "postgresql://fake:fake@db.example.invalid/test",
+            "HARNESSSYNC_EMAIL_ADDRESS": "sender@example.invalid",
+            "HARNESSSYNC_EMAIL_APP_PASSWORD": "fictional-password",
+        }
+        output = io.StringIO()
+        with mock.patch.dict(os.environ, environment), mock.patch.object(mail, "configure") as configure, \
+             mock.patch.object(notifications, "send_email", side_effect=[False, True]) as send, \
+             redirect_stdout(output):
+            self.assertEqual(mail.main(["--scheduled"]), 1)
+            # An immediate rerun respects the backoff, with no second SMTP call.
+            self.assertEqual(mail.main(["--scheduled"]), 0)
+            self.assertEqual(send.call_count, 1)
+            with db_store.get_db() as conn:
+                conn.execute(db_store.notification_outbox.update().values(next_attempt=mail.stamp(NOW)))
+            self.assertEqual(mail.main(["--scheduled"]), 0)
+            self.assertEqual(mail.main(["--scheduled"]), 0)
+            self.assertEqual(send.call_count, 2)
+            configure.assert_called_with(environment["DATABASE_URL"])
+        with db_store.get_db() as conn:
+            entry = conn.execute(sa.select(db_store.notification_outbox)).mappings().one()
+        self.assertTrue(entry["sent_at"])
+        self.assertEqual(entry["body"], "")
+        for private in (*environment.values(), "alice@example.com", "Save climb button does not work"):
+            self.assertNotIn(private, output.getvalue())
+
+    def test_scheduler_sanitizes_database_errors(self):
+        output = io.StringIO()
+        with mock.patch.dict(os.environ, {
+            "DATABASE_URL": "postgresql://fake:fake@db.example.invalid/test",
+            "HARNESSSYNC_EMAIL_ADDRESS": "sender@example.invalid",
+            "HARNESSSYNC_EMAIL_APP_PASSWORD": "fictional-password",
+        }), mock.patch.object(mail, "configure", side_effect=RuntimeError("private credentials")), redirect_stdout(output):
+            self.assertEqual(mail.main(["--scheduled"]), 1)
+        self.assertNotIn("private credentials", output.getvalue())
+
+    def test_concurrent_retry_workers_claim_email_once(self):
+        self.report()
+        with mock.patch.object(notifications, "is_configured", return_value=True), \
+             mock.patch.object(notifications, "send_email", return_value=True) as send:
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                results = list(pool.map(lambda _: mail.deliver_pending(now=NOW), range(2)))
+            self.assertEqual(sum(results), 1)
+            send.assert_called_once()
 
     def test_incidents_are_grouped_without_private_exception_content(self):
         refs = []

@@ -5,6 +5,8 @@ import shutil
 import sqlite3
 import tempfile
 import unittest
+from unittest import mock
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 
 from harnesssync.grades import grade_rank, YDS_GRADES
@@ -130,6 +132,22 @@ class TestHarnessSync(unittest.TestCase):
         self.assertTrue(profile_manager.display_name_taken("  alex "))
         self.assertFalse(profile_manager.display_name_taken("Alex", exclude_user_id="a@example.com"))
 
+    def test_leaderboard_requires_explicit_opt_in(self):
+        user = "private@example.com"
+        profile_manager.save_profile(user, "Private climber")
+        profile_manager.log_climb(user, "Boulder", "V3", "Sent", TODAY)
+        self.assertFalse(profile_manager.get_profile(user)["show_on_leaderboard"])
+        self.assertTrue(leaderboard_engine.compile_leaderboard("Boulder").empty)
+
+    def test_concurrent_project_graduation_records_one_send(self):
+        user = self._user("alice@example.com")
+        profile_manager.log_project(user, "Boulder", "V6", TODAY)
+        project_id = profile_manager.get_projects(user)[0]["id"]
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            list(pool.map(lambda _: profile_manager.graduate_project(user, project_id, TODAY), range(2)))
+        self.assertEqual(profile_manager.get_projects(user), [])
+        self.assertEqual(len(profile_manager.get_climbs(user)), 1)
+
     def test_delete_account_removes_everything(self):
         user = self._user("alice@example.com")
         profile_manager.log_climb(user, "Boulder", "V3", "Sent", TODAY)
@@ -219,6 +237,48 @@ class TestHarnessSync(unittest.TestCase):
         session = profile_manager.get_sessions(user)[0]
         span = datetime.fromisoformat(session["ended_at"]) - datetime.fromisoformat(session["started_at"])
         self.assertEqual(span.total_seconds() / 60, session["duration_min"])
+
+    def test_failed_session_insert_preserves_running_timer(self):
+        user = self._user("alice@example.com")
+        start = datetime(2026, 9, 25, 18, tzinfo=timezone.utc)
+        profile_manager.start_session_timer(user, start)
+        with mock.patch.object(profile_manager, "_log_session", side_effect=RuntimeError("insert failed")):
+            with self.assertRaises(RuntimeError):
+                profile_manager.end_session_timer(user, start + timedelta(minutes=30))
+        self.assertEqual(profile_manager.active_session_start(user), start)
+        self.assertEqual(profile_manager.get_sessions(user), [])
+
+    def test_session_end_before_start_preserves_timer(self):
+        user = self._user("alice@example.com")
+        start = datetime(2026, 9, 25, 18, tzinfo=timezone.utc)
+        profile_manager.start_session_timer(user, start)
+        with self.assertRaises(ValueError):
+            profile_manager.end_session_timer(user, start - timedelta(minutes=1))
+        self.assertEqual(profile_manager.active_session_start(user), start)
+
+    def test_project_graduation_rolls_back_failed_insert_and_is_retryable(self):
+        import sqlalchemy as sa
+        user = self._user("alice@example.com")
+        profile_manager.log_project(user, "Boulder", "V6", TODAY, route_name="Crux", notes="heel")
+        project = profile_manager.get_projects(user)[0]
+
+        def fail_insert(conn, cursor, statement, parameters, context, executemany):
+            if statement.startswith("INSERT INTO climbs"):
+                raise RuntimeError("insert failed")
+
+        engine = db_store.get_engine()
+        sa.event.listen(engine, "before_cursor_execute", fail_insert)
+        try:
+            with self.assertRaises(RuntimeError):
+                profile_manager.graduate_project(user, project["id"], TODAY)
+        finally:
+            sa.event.remove(engine, "before_cursor_execute", fail_insert)
+        self.assertEqual(profile_manager.get_projects(user), [project])
+        self.assertEqual(profile_manager.get_climbs(user), [])
+        profile_manager.graduate_project(user, project["id"], TODAY)
+        profile_manager.graduate_project(user, project["id"], TODAY)
+        self.assertEqual(len(profile_manager.get_climbs(user)), 1)
+        self.assertEqual(profile_manager.get_climbs(user)[0]["notes"], "heel")
 
     def test_leaderboard_counts_a_repeated_route_once(self):
         user = self._user("alice@example.com")

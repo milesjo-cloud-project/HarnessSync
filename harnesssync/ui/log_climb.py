@@ -21,6 +21,9 @@ def render(user_id):
     discipline = st.segmented_control(
         "Discipline", ["Boulder", "Rope"], default="Boulder", key="quick_log_discipline"
     )
+    if discipline is None:
+        st.info("Choose Boulder or Rope to log a climb.")
+        return
     with st.form("quick_log_climb_form", clear_on_submit=True):
         grade = st.selectbox("Grade", GRADES_BY_DISCIPLINE[discipline])
         status = st.selectbox(

@@ -12,6 +12,7 @@ submission or block the app. Data is always saved to disk first; email is a
 best-effort notification on top of that, not the source of truth.
 """
 
+import os
 import smtplib
 from email.mime.text import MIMEText
 
@@ -22,6 +23,16 @@ SMTP_PORT = 465
 
 
 def _get_email_secrets():
+    # A scheduled worker has no Streamlit secrets file. Keep this configuration
+    # self-contained so a partial environment never mixes two SMTP accounts.
+    environment = {
+        "address": os.environ.get("HARNESSSYNC_EMAIL_ADDRESS", ""),
+        "app_password": os.environ.get("HARNESSSYNC_EMAIL_APP_PASSWORD", ""),
+        "to_address": os.environ.get("HARNESSSYNC_EMAIL_TO_ADDRESS", ""),
+    }
+    if any(environment.values()):
+        environment["to_address"] = environment["to_address"] or environment["address"]
+        return environment
     try:
         return st.secrets.get("email", {})
     except Exception:

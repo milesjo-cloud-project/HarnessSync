@@ -33,7 +33,7 @@ profiles = sa.Table(
     "profiles", metadata,
     sa.Column("user_id", sa.String(320), primary_key=True),
     sa.Column("display_name", sa.String(40), nullable=False),
-    sa.Column("show_on_leaderboard", sa.Boolean, nullable=False, default=True),
+    sa.Column("show_on_leaderboard", sa.Boolean, nullable=False, default=False),
     sa.Column("created_at", sa.String(32), nullable=False),
     # Start time of a running session timer, so it survives a page reload
     # (phones often reload a backgrounded tab mid-session). NULL when idle.
