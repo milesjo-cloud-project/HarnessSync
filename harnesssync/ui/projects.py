@@ -54,6 +54,7 @@ def render(user_id):
         st.download_button(
             "⬇️ Download my projects (CSV)", projects_df.to_csv(index=False),
             file_name="harnesssync_projects.csv", mime="text/csv",
+            on_click="ignore",
         )
         for proj in active_projects:
             with st.container():
