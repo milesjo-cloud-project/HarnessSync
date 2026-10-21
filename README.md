@@ -20,6 +20,7 @@ across sessions, time your sessions, and see your grade pyramid and progression.
 - Owner-reviewed repair briefs for Codex Cloud, with manual PR review and publishing
 - Offline phone web app: device storage for climbs/attempts, downloaded projects and progress,
   and automatic duplicate-safe sync when the page is open again (📱 Phone App tab).
+- Export and restore unsynced offline backups on the same account; no idle sync polling.
 - Waitlist for a native iPhone / Android app (📱 Phone App tab)
 
 ## Run it locally
