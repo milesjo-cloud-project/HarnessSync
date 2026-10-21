@@ -1,6 +1,6 @@
 /* Only public app assets are cached. Private snapshots live in IndexedDB. */
 // Bump this version whenever any public app asset changes in a release.
-const CACHE = "harnesssync-offline-v1";
+const CACHE = "harnesssync-offline-v2";
 const SHELL = ["./", "index.html", "app.js", "style.css", "manifest.webmanifest", "icon.svg"];
 const urls = SHELL.map(path => new URL(path, self.registration.scope).href);
 self.addEventListener("install", event => {

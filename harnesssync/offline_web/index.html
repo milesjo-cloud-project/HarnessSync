@@ -38,6 +38,11 @@
     <p>Your downloaded log and device access are stored in this browser. Use a private device. Browser data removal or private browsing can erase unsynced entries.</p>
     <p>Automatic sync runs while this page is open, including when you return to it. Closed apps wait until you reopen them. Device access expires after 30 days; reconnect from the Phone App tab to renew it.</p>
     <button id="backup" type="button">Export unsynced entries</button>
+    <label>Restore an unsynced backup<input id="restore-file" type="file" accept=".json,application/json"></label>
+    <button id="restore" type="button" disabled>Restore backup</button>
+    <p id="restore-status" role="status" aria-live="polite"></p>
+    <p>Connect the same account before restoring. Backups contain climbing data, so keep them private.
+      Restoration merges entries into your queue; importing a backup again will not duplicate saved climbs.</p>
     <button id="forget" type="button">Remove data from this device</button>
     <a href="../">Open main app</a>
   </section>

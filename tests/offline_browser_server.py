@@ -25,5 +25,5 @@ if __name__ == "__main__":
     profile_manager.log_climb("dev:guest", "Boulder", "V2", "Sent", "2026-01-01")
     profile_manager.log_project("dev:guest", "Boulder", "V4", "2026-01-01",
                                 route_name="Imaginary ridge", environment="Outdoor")
-    from asgi_app import app
+    from app import app
     uvicorn.run(app, host="127.0.0.1", port=int(sys.argv[2]), log_level="warning")
