@@ -144,6 +144,20 @@ waitlist = sa.Table(
     sa.Column("joined_at", sa.String(32), nullable=False),  # UTC ISO timestamp
 )
 
+offline_devices = sa.Table(
+    "offline_devices", metadata,
+    sa.Column("token_hash", sa.String(64), primary_key=True),
+    sa.Column("user_id", sa.String(320), nullable=False, index=True),
+    sa.Column("expires_at", sa.String(32), nullable=False),
+)
+
+offline_receipts = sa.Table(
+    "offline_receipts", metadata,
+    sa.Column("user_id", sa.String(320), primary_key=True),
+    sa.Column("operation_id", sa.String(36), primary_key=True),
+    sa.Column("payload_hash", sa.String(64), nullable=False),
+)
+
 _engine = None
 
 

@@ -5,3 +5,4 @@ altair>=5,<7
 sqlalchemy>=2.0,<3
 psycopg[binary]>=3.2,<4
 tzdata
+starlette>=1.0,<2

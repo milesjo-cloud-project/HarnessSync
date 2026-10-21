@@ -78,6 +78,22 @@ class TestApp(unittest.TestCase):
         total = next(m for m in at.metric if m.label == "Total Climbs Logged")
         self.assertEqual(total.value, "1")
 
+    def test_offline_device_connection_and_revocation(self):
+        from harnesssync.offline_manager import synchronize, DeviceUnauthorized
+        with mock.patch.dict(os.environ, {"HARNESSSYNC_OFFLINE_ENABLED": "1"}):
+            at = self._tab(self._run(), "📱 Phone App")
+            self._button(at, "Connect this device for offline use").click()
+            at = self._run(at)
+            account, link = at.session_state["offline_connection"]
+            self.assertEqual(account, USER)
+            self.assertIn("/offline/#device=", link)
+            token = link.split("#device=", 1)[1]
+            self.assertEqual(synchronize(token, [])["snapshot"]["account"], USER)
+            self._button(at, "Revoke all offline device connections").click()
+            self._run(at)
+            with self.assertRaises(DeviceUnauthorized):
+                synchronize(token, [])
+
     def test_deselecting_discipline_does_not_crash(self):
         at = self._run()
         at.segmented_control(key="quick_log_discipline").set_value(None)

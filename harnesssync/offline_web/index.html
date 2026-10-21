@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1f5948"><title>HarnessSync offline log</title>
+  <link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon.svg">
+  <link rel="stylesheet" href="style.css"><script src="app.js" defer></script>
+</head>
+<body>
+<main>
+  <h1>HarnessSync</h1><p>Log at the crag. Sync when you reconnect.</p>
+  <p id="status" role="status" aria-live="polite">Opening device storage…</p>
+  <p id="ready">Offline setup has not finished.</p>
+  <p id="account"></p>
+  <button id="sync" type="button">Sync now</button>
+  <p id="error" role="alert"></p>
+  <section><h2>Log a climb</h2>
+    <form id="log">
+      <label>Discipline<select name="discipline" id="discipline"><option>Boulder</option><option>Rope</option></select></label>
+      <label>Grade<select name="grade" id="grade"></select></label>
+      <label>What happened?<select name="status"><option>Sent</option><option>Flash</option><option>Onsight</option><option>Redpoint</option><option>Attempt</option><option>Project</option></select></label>
+      <label>Date<input name="date" id="date" type="date" required></label>
+      <label>Route or problem name<input name="route_name" maxlength="80"></label>
+      <label>Gym or crag<input name="location" maxlength="80"></label>
+      <label>Environment<select name="environment"><option>Outdoor</option><option>Gym</option></select></label>
+      <details><summary>More details</summary>
+        <label>Wall angle<select name="angle"><option>Vertical</option><option>Slab</option><option>Overhang</option><option>Roof</option></select></label>
+        <label>Hold type<select name="hold_type"><option>Mixed</option><option>Crimps</option><option>Slopers</option><option>Jugs</option><option>Pinches</option><option>Pockets</option></select></label>
+        <label>Notes<textarea name="notes" maxlength="500"></textarea></label>
+      </details>
+      <button type="submit" id="save" disabled>Save on this device</button>
+    </form>
+  </section>
+  <section><h2>Waiting to sync</h2><p>Entries stay here until the server confirms saving them.</p><ul id="pending"></ul></section>
+  <section><h2>Downloaded projects</h2><p>Use “Add attempt” to queue another attempt. Editing or completing an existing project is available in the main app.</p><ul id="projects"></ul></section>
+  <section><h2>Downloaded progress</h2><p id="downloaded"></p><p id="progress"></p><ul id="history"></ul></section>
+  <section><h2>This device</h2>
+    <p>Your downloaded log and device access are stored in this browser. Use a private device. Browser data removal or private browsing can erase unsynced entries.</p>
+    <p>Automatic sync runs while this page is open, including when you return to it. Closed apps wait until you reopen them. Device access expires after 30 days; reconnect from the Phone App tab to renew it.</p>
+    <button id="backup" type="button">Export unsynced entries</button>
+    <button id="forget" type="button">Remove data from this device</button>
+    <a href="../">Open main app</a>
+  </section>
+</main>
+</body></html>
