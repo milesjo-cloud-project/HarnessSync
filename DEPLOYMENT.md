@@ -66,11 +66,11 @@ anyone could act as anyone.
 
 ## Keep in mind
 
-- **Offline release:** existing deployments using `app.py` must switch to `asgi_app.py`
-  after the human has reviewed and merged the change. A reboot alone does not change
-  the entry point. Verify that the hosting platform supports Streamlit 1.65's ASGI
-  entry point and serves `/offline/sw.js` as JavaScript before enabling phone use.
-  Docker uses the new entry point automatically on the next approved release.
+- **Offline release:** existing deployments can keep `app.py`: it now forwards to
+  the same ASGI server as `asgi_app.py`, with the UI in `streamlit_app.py`. Verify
+  that hosting supports Streamlit 1.65's ASGI entry point and serves
+  `/offline/sw.js` as JavaScript before enabling phone use. A reboot reloads the
+  configured branch; it does not approve or select a different version.
 - **Phone setup:** use HTTPS and the default root URL (no reverse-proxy subpath).
   Sign in, open **Phone App**, connect the device, and open the offline log. Wait for
   the download confirmation, then bookmark it or add it to the home screen. Test

@@ -45,7 +45,8 @@ python -m pytest
 | File | What it does |
 | --- | --- |
 | `asgi_app.py` | Server entry point: Streamlit UI plus offline assets and sync API |
-| `app.py` | Sign-in, sidebar and tabs; still runnable alone without offline routes |
+| `app.py` | Compatibility launcher for existing Streamlit Cloud deployments |
+| `streamlit_app.py` | Sign-in, sidebar and tabs, rendered by the ASGI server |
 | `harnesssync/ui/` | The page, one module per part: `sidebar`, `dashboard`, `projects`, `leaderboard`, `phone_app`, `feedback`, `guide`, plus shared `common` helpers |
 | `harnesssync/db_store.py` | Database tables and connection (SQLite locally, Postgres in production) |
 | `harnesssync/profile_manager.py` | Profiles, climbs, projects, sessions - every query scoped to the signed-in user |

@@ -1,7 +1,7 @@
-"""Runs app.py itself, so a crash anywhere in the page fails CI.
+"""Runs the Streamlit UI script itself, so a crash anywhere in the page fails CI.
 
 The Docker smoke test only proves the server starts: Streamlit's health check
-answers before app.py has run once.
+answers before the UI script has run once.
 """
 
 import os
@@ -15,7 +15,7 @@ from streamlit.testing.v1 import AppTest
 from harnesssync import db_store, profile_manager
 from harnesssync.grades import SENT_STATUSES
 
-APP_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "app.py")
+APP_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "streamlit_app.py")
 USER = "dev:guest"  # dev mode's default "Guest" climber
 
 
