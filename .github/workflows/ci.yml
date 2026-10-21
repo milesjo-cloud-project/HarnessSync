@@ -31,6 +31,23 @@ jobs:
 
       - run: python -m pytest -v
 
+  offline-browser:
+    name: Offline phone flow
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: pip install -r requirements-dev.txt
+      - run: npm install --no-save --package-lock=false playwright@1.62.1
+      - run: npx playwright install --with-deps chromium
+      - run: node tests/offline_browser.cjs python
+
   docker:
     name: Docker build
     runs-on: ubuntu-latest

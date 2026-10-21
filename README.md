@@ -18,13 +18,15 @@ across sessions, time your sessions, and see your grade pyramid and progression.
 - CSV export and one-click account deletion
 - Private support tickets, status and owner replies, crash references, and retryable email alerts
 - Owner-reviewed repair briefs for Codex Cloud, with manual PR review and publishing
+- Offline phone web app: device storage for climbs/attempts, downloaded projects and progress,
+  and automatic duplicate-safe sync when the page is open again (📱 Phone App tab).
 - Waitlist for a native iPhone / Android app (📱 Phone App tab)
 
 ## Run it locally
 
 ```sh
 pip install -r requirements-dev.txt
-HARNESSSYNC_DEV_MODE=1 streamlit run app.py   # no Google sign-in, local SQLite
+HARNESSSYNC_DEV_MODE=1 streamlit run asgi_app.py   # no Google sign-in, local SQLite
 ```
 
 To run with Google sign-in, copy `.streamlit/secrets.toml.example` to
@@ -41,7 +43,8 @@ python -m pytest
 
 | File | What it does |
 | --- | --- |
-| `app.py` | Entry point Streamlit Cloud runs: sign-in, then wires up the sidebar and tabs |
+| `asgi_app.py` | Server entry point: Streamlit UI plus offline assets and sync API |
+| `app.py` | Sign-in, sidebar and tabs; still runnable alone without offline routes |
 | `harnesssync/ui/` | The page, one module per part: `sidebar`, `dashboard`, `projects`, `leaderboard`, `phone_app`, `feedback`, `guide`, plus shared `common` helpers |
 | `harnesssync/db_store.py` | Database tables and connection (SQLite locally, Postgres in production) |
 | `harnesssync/profile_manager.py` | Profiles, climbs, projects, sessions - every query scoped to the signed-in user |

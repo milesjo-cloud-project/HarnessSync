@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 from harnesssync.grades import grade_rank, SENT_STATUSES, GRADES_BY_DISCIPLINE
 from harnesssync.db_store import (get_db, rows, profiles, climbs, projects, sessions,
-                                 feedback, waitlist, support_locks, notification_outbox)
+                                 feedback, waitlist, support_locks, notification_outbox, offline_devices, offline_receipts)
 
 DISPLAY_NAME_MAX = 30
 ROUTE_MAX = 80
@@ -80,7 +80,7 @@ def save_profile(user_id, display_name, show_on_leaderboard=False):
 def delete_account(user_id):
     """Permanently removes the profile and every row belonging to it."""
     with get_db() as conn:
-        for table in (climbs, projects, sessions, feedback, waitlist, support_locks, notification_outbox):
+        for table in (climbs, projects, sessions, feedback, waitlist, support_locks, notification_outbox, offline_devices, offline_receipts):
             conn.execute(table.delete().where(table.c.user_id == user_id))
         conn.execute(profiles.delete().where(profiles.c.user_id == user_id))
 
@@ -137,13 +137,19 @@ def log_climb(user_id, discipline, grade, status, climb_date, route_name="", loc
               environment="Gym", angle="Vertical", hold_type="Mixed", notes=""):
     """Appends one logged climb. Returns PR alert strings if it's a new best send."""
     with get_db() as conn:
-        previous_best_rank = _best_send_rank(conn, user_id, discipline) if status in SENT_STATUSES else -1
-        conn.execute(climbs.insert().values(
-            user_id=user_id, date=climb_date, discipline=discipline, grade=grade, status=status,
-            route_name=_clean(route_name, ROUTE_MAX), location=_clean(location, LOCATION_MAX),
-            environment=environment, angle=angle, hold_type=hold_type,
-            notes=(notes or "").strip()[:NOTES_MAX],
-        ))
+        return _log_climb(conn, user_id, discipline, grade, status, climb_date,
+                          route_name, location, environment, angle, hold_type, notes)
+
+
+def _log_climb(conn, user_id, discipline, grade, status, climb_date, route_name="", location="",
+               environment="Gym", angle="Vertical", hold_type="Mixed", notes=""):
+    previous_best_rank = _best_send_rank(conn, user_id, discipline) if status in SENT_STATUSES else -1
+    conn.execute(climbs.insert().values(
+        user_id=user_id, date=climb_date, discipline=discipline, grade=grade, status=status,
+        route_name=_clean(route_name, ROUTE_MAX), location=_clean(location, LOCATION_MAX),
+        environment=environment, angle=angle, hold_type=hold_type,
+        notes=(notes or "").strip()[:NOTES_MAX],
+    ))
 
     if status in SENT_STATUSES and grade_rank(discipline, grade) > previous_best_rank:
         return [f"🏆 New {discipline} personal best: {grade}!"]
@@ -178,6 +184,13 @@ def log_project(user_id, discipline, grade, project_date, route_name="", locatio
     creating a duplicate. Unnamed projects match on location instead, so
     logging "V5 attempt at the gym" twice doesn't make two projects.
     Returns "added" or "bumped"."""
+    with get_db() as conn:
+        return _log_project(conn, user_id, discipline, grade, project_date, route_name,
+                            location, environment, angle, hold_type, attempts, notes)
+
+
+def _log_project(conn, user_id, discipline, grade, project_date, route_name="", location="",
+                 environment="Gym", angle="Vertical", hold_type="Mixed", attempts=1, notes=""):
     route_name = _clean(route_name, ROUTE_MAX)
     location = _clean(location, LOCATION_MAX)
     same_project = [
@@ -188,20 +201,19 @@ def log_project(user_id, discipline, grade, project_date, route_name="", locatio
     ]
     if not route_name:
         same_project.append(sa.func.lower(projects.c.location) == location.lower())
-    with get_db() as conn:
-        existing = conn.execute(sa.select(projects.c.id).where(*same_project)).first()
-        if existing:
-            conn.execute(
-                projects.update().where(projects.c.id == existing.id)
-                .values(attempts=projects.c.attempts + attempts)
-            )
-            return "bumped"
-        conn.execute(projects.insert().values(
-            user_id=user_id, date=project_date, discipline=discipline, grade=grade,
-            route_name=route_name, location=location,
-            environment=environment, angle=angle, hold_type=hold_type,
-            attempts=attempts, notes=(notes or "").strip()[:NOTES_MAX],
-        ))
+    existing = conn.execute(sa.select(projects.c.id).where(*same_project)).first()
+    if existing:
+        conn.execute(
+            projects.update().where(projects.c.id == existing.id)
+            .values(attempts=projects.c.attempts + attempts)
+        )
+        return "bumped"
+    conn.execute(projects.insert().values(
+        user_id=user_id, date=project_date, discipline=discipline, grade=grade,
+        route_name=route_name, location=location,
+        environment=environment, angle=angle, hold_type=hold_type,
+        attempts=attempts, notes=(notes or "").strip()[:NOTES_MAX],
+    ))
     return "added"
 
 

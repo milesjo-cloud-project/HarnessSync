@@ -39,6 +39,10 @@ def render():
 
     with tab3:
         st.subheader("📝 Step-by-Step Logging Guide")
+        st.info("Going offline? Open Phone App while online, connect your device, and open the offline log. "
+                "Wait for its download confirmation and test airplane mode before leaving. "
+                "That page saves sends and attempts on your device and shows downloaded projects and progress. "
+                "Keep it open or reopen it after reconnecting to sync. The main app still requires internet.")
         col1, col2, col3 = st.columns(3)
         with col1:
             st.markdown("### 1️⃣ Log a Climb / Session")
@@ -65,6 +69,8 @@ def render():
           messages or account identifiers. Include the incident reference when reporting a failure.
         - **Phone app waitlist:** if you join, we store which phone you use and your answers, and email you
           about the app. Leave any time from the 📱 Phone App tab.
+        - **Offline devices:** connected browsers store a downloaded log, queued entries and a 30-day
+          access token. Revoke device access in Phone App; remove downloaded data on the device separately.
         - **Your control:** hide yourself from the leaderboard, download your climbs, projects and sessions
           as CSV files, or delete your account data, support reports and queued account notifications from
           the 👤 menu. Already-delivered emails and public GitHub reports are separate copies.
