@@ -2,6 +2,7 @@
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -11,6 +12,17 @@ from starlette.testclient import TestClient
 
 from harnesssync import db_store as db, profile_manager as pm, offline_manager as offline
 from harnesssync.offline_routes import routes
+
+
+def test_streamlit_cli_discovers_both_server_entry_points():
+    # An imported App alias runs in classic mode and silently renders a blank page.
+    # CLI discovery parses source without importing it, so no secrets are read here.
+    from streamlit.web.server.app_discovery import discover_asgi_app
+    root = Path(__file__).resolve().parent.parent
+    for name in ("app.py", "asgi_app.py"):
+        result = discover_asgi_app(root / name)
+        assert result.is_asgi_app, f"Streamlit CLI must recognize {name} as an ASGI server"
+        assert result.app_name == "app"
 
 
 @pytest.fixture
