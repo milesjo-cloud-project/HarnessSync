@@ -10,5 +10,6 @@ def isolated_secrets(monkeypatch):
     secrets._secrets = {"auth": {}, "email": {}, "support": {}, "database": {}, "app": {}}
     monkeypatch.setattr(st, "secrets", secrets)
     monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.delenv("HARNESSSYNC_AUTH_MODE", raising=False)
     for key in ("HARNESSSYNC_EMAIL_ADDRESS", "HARNESSSYNC_EMAIL_APP_PASSWORD", "HARNESSSYNC_EMAIL_TO_ADDRESS"):
         monkeypatch.delenv(key, raising=False)

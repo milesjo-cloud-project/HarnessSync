@@ -7,7 +7,7 @@ from harnesssync.profile_manager import (
     start_session_timer, active_session_start, end_session_timer,
     DISPLAY_NAME_MAX, MAX_SESSION_MIN,
 )
-from harnesssync.ui.common import auth_configured, user_now, user_tz, flash, leaderboard_changed
+from harnesssync.ui.common import auth_configured, user_now, user_tz, flash, leaderboard_changed, password_auth_enabled
 
 
 def render_account(user_id, profile):
@@ -30,6 +30,11 @@ def render_account(user_id, profile):
                     st.rerun()
         if auth_configured():
             st.button("Log out", on_click=st.logout, width="stretch")
+        elif password_auth_enabled():
+            st.caption(f"Signed in as {user_id}")
+            if st.button("Log out", width="stretch"):
+                st.session_state.clear()
+                st.rerun()
 
         st.markdown("---")
         st.caption("Danger zone")

@@ -158,6 +158,20 @@ offline_receipts = sa.Table(
     sa.Column("payload_hash", sa.String(64), nullable=False),
 )
 
+password_accounts = sa.Table(
+    "password_accounts", metadata,
+    sa.Column("email", sa.String(254), primary_key=True),
+    sa.Column("user_id", sa.String(320), nullable=False, server_default=""),
+    sa.Column("password_hash", sa.Text, nullable=False, server_default=""),
+    sa.Column("revision", sa.String(64), nullable=False, server_default=""),
+    sa.Column("code_hash", sa.String(64), nullable=False, server_default=""),
+    sa.Column("code_expires", sa.BigInteger, nullable=False, server_default="0"),
+    sa.Column("code_attempts", sa.Integer, nullable=False, server_default="0"),
+    sa.Column("last_sent", sa.BigInteger, nullable=False, server_default="0"),
+    sa.Column("failures", sa.Integer, nullable=False, server_default="0"),
+    sa.Column("locked_until", sa.BigInteger, nullable=False, server_default="0"),
+)
+
 _engine = None
 
 
