@@ -61,6 +61,10 @@ python -m pytest
 
 ## Deploying
 
+Email/password sign-in is available as an alternative to Google. See
+[password account setup](docs/password-accounts.md) for Render settings, mailbox
+verification, password recovery, and existing-account migration.
+
 See [DEPLOYMENT.md](DEPLOYMENT.md) (Streamlit Community Cloud + Google sign-in + Neon Postgres).
 For unattended support email retries, enable the included
 [GitHub Actions scheduler](docs/support-email-scheduler.md). It runs while your computer is off.

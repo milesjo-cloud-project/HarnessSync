@@ -1,5 +1,10 @@
 # Deploying HarnessSync
 
+For email/password accounts without Google OAuth, see
+[the password-account setup](docs/password-accounts.md). It uses the same hosted
+database and requires outgoing verification email. Enable it explicitly with
+`HARNESSSYNC_AUTH_MODE=password` after deploying the reviewed code.
+
 HarnessSync runs on **Streamlit Community Cloud** (free), with **Google sign-in**
 and a free hosted **Postgres** database. The database has to be hosted
 elsewhere because Streamlit Cloud wipes the app's disk on every reboot and

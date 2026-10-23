@@ -19,7 +19,11 @@ def _secret_section(name):
 
 
 def auth_configured():
-    return bool(_secret_section("auth"))
+    return not password_auth_enabled() and bool(_secret_section("auth"))
+
+
+def password_auth_enabled():
+    return os.environ.get("HARNESSSYNC_AUTH_MODE", "").lower() == "password"
 
 
 def email_is_verified(claim):

@@ -2,7 +2,7 @@ import streamlit as st
 
 from harnesssync.profile_manager import get_profile, save_profile, display_name_taken, DISPLAY_NAME_MAX
 from harnesssync.ui import dashboard, feedback, guide, leaderboard, log_climb, phone_app, projects, sidebar
-from harnesssync.ui.common import auth_configured, dev_mode, email_is_verified, render_safely, show_flash
+from harnesssync.ui.common import auth_configured, dev_mode, email_is_verified, render_safely, show_flash, password_auth_enabled
 from harnesssync.support_config import HELP_URL
 
 st.set_page_config(page_title="HarnessSync | Climbing Intel", layout="wide")
@@ -12,6 +12,9 @@ st.set_page_config(page_title="HarnessSync | Climbing Intel", layout="wide")
 def resolve_user():
     """Returns (user_id, suggested_display_name) for whoever is using the app,
     or stops the script to show a sign-in screen."""
+    if password_auth_enabled():
+        from harnesssync.ui.sign_in import resolve_user as resolve_password_user
+        return resolve_password_user()
     if auth_configured():
         if not st.user.is_logged_in:
             st.title("🧗 HarnessSync")
@@ -74,7 +77,7 @@ def render_page():
     user_id, suggested_name = resolve_user()
     profile = get_profile(user_id)
     if profile is None:
-        if dev_mode() and not auth_configured():
+        if dev_mode() and not auth_configured() and not password_auth_enabled():
             save_profile(user_id, suggested_name)
             profile = get_profile(user_id)
         else:

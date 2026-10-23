@@ -44,7 +44,7 @@ def is_configured() -> bool:
     return bool(secrets.get("address") and secrets.get("app_password"))
 
 
-def send_email(subject, body) -> bool:
+def send_email(subject, body, *, recipient=None) -> bool:
     """Best-effort send. Returns True on success, False otherwise (including
     when email isn't configured at all - that's a no-op, not an error)."""
     secrets = _get_email_secrets()
@@ -53,7 +53,7 @@ def send_email(subject, body) -> bool:
     if not address or not app_password:
         return False
 
-    to_address = secrets.get("to_address", address)
+    to_address = recipient or secrets.get("to_address", address)
 
     msg = MIMEText(body)
     msg["Subject"] = subject
