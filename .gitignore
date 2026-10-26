@@ -2,6 +2,12 @@ __pycache__/
 *.pyc
 .venv/
 .test-tmp/
+# Paused local AI prototype; Discord alerts do not ship or use it.
+maintenance-agent/
+.sms-alerts-data/
+.discord-alerts-data/
+monitoring/.env*
+!monitoring/.env.example
 .streamlit/secrets.toml
 .vscode/
 
