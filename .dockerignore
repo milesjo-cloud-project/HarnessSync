@@ -1,6 +1,10 @@
 .git
 .venv
 .test-tmp
+maintenance-agent/
+.sms-alerts-data/
+.discord-alerts-data/
+monitoring/
 .vscode
 .devcontainer
 __pycache__
