@@ -82,7 +82,20 @@ def delete_account(user_id):
     with get_db() as conn:
         for table in (climbs, projects, sessions, feedback, waitlist, support_locks, notification_outbox, offline_devices, offline_receipts, password_accounts):
             conn.execute(table.delete().where(table.c.user_id == user_id))
+        from harnesssync.db_store import goals
+        conn.execute(goals.delete().where(goals.c.user_id == user_id))
         conn.execute(profiles.delete().where(profiles.c.user_id == user_id))
+
+
+def set_language(user_id, language):
+    """Save only the authenticated account's supported display language."""
+    from harnesssync.i18n import LANGUAGES
+    if language not in LANGUAGES:
+        raise ValueError("Unsupported language.")
+    if not user_id:
+        raise ValueError("Sign in before saving a language.")
+    with get_db() as conn:
+        conn.execute(profiles.update().where(profiles.c.user_id == user_id).values(language=language))
 
 
 # ----------------- CLIMBS -----------------
@@ -96,6 +109,18 @@ def get_climbs(user_id, discipline=None):
     query = query.order_by(climbs.c.date.desc(), climbs.c.id.desc())
     with get_db() as conn:
         return rows(conn.execute(query))
+
+
+def get_logging_defaults(user_id, discipline=None):
+    """Reuse the account's last saved send, never another climber's defaults."""
+    if not user_id:
+        return {}
+    query = sa.select(climbs).where(climbs.c.user_id == user_id)
+    if discipline:
+        query = query.where(climbs.c.discipline == discipline)
+    with get_db() as conn:
+        found = conn.execute(query.order_by(climbs.c.id.desc()).limit(1)).mappings().first()
+        return dict(found) if found else {}
 
 
 def best_send(climb_list, discipline):

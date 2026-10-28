@@ -1,6 +1,7 @@
 # Bounded so a new major release can't break a deploy overnight
 streamlit[auth]>=1.65,<2
 pandas>=2.2,<4
+pillow>=10.1,<13
 altair>=5,<7
 sqlalchemy>=2.0,<3
 psycopg[binary]>=3.2,<4

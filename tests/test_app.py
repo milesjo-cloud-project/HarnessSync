@@ -86,13 +86,35 @@ class TestApp(unittest.TestCase):
             at = self._run(at)
             account, link = at.session_state["offline_connection"]
             self.assertEqual(account, USER)
-            self.assertIn("/offline/#device=", link)
+            self.assertIn("/offline/?lang=en#device=", link)
             token = link.split("#device=", 1)[1]
             self.assertEqual(synchronize(token, [])["snapshot"]["account"], USER)
             self._button(at, "Revoke all offline device connections").click()
             self._run(at)
             with self.assertRaises(DeviceUnauthorized):
                 synchronize(token, [])
+
+    def test_achievements_are_private_and_refresh_after_deletion(self):
+        at = self._tab(self._run(), "📊 Progress")
+        at.segmented_control(key="progress_view").set_value("Achievements")
+        at = self._run(at)
+        self.assertTrue(any("unlock an achievement" in e.value for e in at.info))
+        profile_manager.log_climb("other@example.com", "Boulder", "V9", "Flash", "2026-01-01")
+        profile_manager.log_climb(USER, "Boulder", "V2", "Sent", "2026-01-01")
+        at = self._run(at)
+        selector = at.selectbox(key="achievement_card")
+        self.assertTrue(any("First V2 send" in option for option in selector.options))
+        self.assertFalse(any("V9" in option for option in selector.options))
+        self.assertTrue(any(b.label == "Download achievement card" for b in at.get("download_button")))
+        # Keep a selected award while its supporting record disappears.
+        selector.set_value("grade-boulder-V2")
+        at = self._run(at)
+        profile_manager.delete_climb(USER, profile_manager.get_climbs(USER)[0]["id"])
+        at = self._run(at)
+        self.assertTrue(any("unlock an achievement" in e.value for e in at.info))
+        profile_manager.log_climb(USER, "Rope", "5.8", "Flash", "2026-01-02")
+        at = self._run(at)
+        self.assertTrue(any("First 5.8 send" in option for option in at.selectbox(key="achievement_card").options))
 
     def test_deselecting_discipline_does_not_crash(self):
         at = self._run()
@@ -110,6 +132,95 @@ class TestApp(unittest.TestCase):
         self._run(at)
         self.assertIsNone(profile_manager.active_session_start(USER))
         self.assertEqual(len(profile_manager.get_sessions(USER)), 1)
+
+    def test_language_selection_saves_and_translates_climbing_flows(self):
+        from harnesssync.i18n import LANGUAGES, translate
+        at = self._run()
+        for code in LANGUAGES:
+            at.selectbox(key="ui_language").set_value(code)
+            at = self._run(at)
+            self.assertEqual(profile_manager.get_profile(USER)["language"], code)
+            self.assertIn(translate("Save climb", code), [b.label for b in at.button])
+            self.assertIn(translate("🧗 Log a climb", code), [tab.label for tab in at.tabs])
+        self._button(at, translate("Save climb", "zh")).click()
+        at = self._run(at)
+        saved = profile_manager.get_climbs(USER)[0]
+        self.assertEqual(saved["discipline"], "Boulder")
+        self.assertEqual(saved["status"], "Sent")
+        self.assertEqual(saved["environment"], "Gym")
+        at = self._tab(at, translate("📊 Progress", "zh"))
+        at.segmented_control(key="progress_view").set_value("Achievements")
+        at = self._run(at)
+        self.assertIn(translate("Achievements", "zh"), [e.value for e in at.subheader])
+        at.selectbox(key="ui_language").set_value("fr")
+        at = self._run(at)
+        self.assertEqual(at.session_state["main_tabs"], translate("📊 Progress", "fr"))
+        self.assertIn(translate("Achievements", "fr"), [e.value for e in at.subheader])
+        fresh = self._run()
+        self.assertEqual(fresh.selectbox(key="ui_language").value, "fr")
+
+    def test_progress_goal_and_recap_flow(self):
+        from harnesssync.progress_manager import get_goals
+        at = self._tab(self._run(), "📊 Progress")
+        at.segmented_control(key="progress_view").set_value("Personal goals")
+        at = self._run(at)
+        self._button(at, "Save goal").click()
+        at = self._run(at)
+        self.assertEqual(len(get_goals(USER)), 1)
+        self.assertTrue(any("0 / 10" in e.proto.text for e in at.get("progress")))
+        self._button(at, "Remove goal").click()
+        at = self._run(at)
+        self.assertEqual(get_goals(USER), [])
+        at.segmented_control(key="progress_view").set_value("Session recaps")
+        at = self._run(at)
+        self.assertTrue(any("finish a timed session" in e.value for e in at.info))
+        profile_manager.log_climb(USER, "Boulder", "V3", "Sent", "2026-01-01")
+        at = self._run(at)
+        self.assertEqual(at.selectbox(key="recap_date").value, "2026-01-01")
+        self.assertEqual(next(m.value for m in at.metric if m.label == "Sends"), "1")
+
+    def test_quick_log_reuses_grade_and_location_without_reusing_route(self):
+        at = self._run()
+        at.selectbox(key="quick_grade_Boulder").set_value("V4")
+        next(w for w in at.text_input if w.label == "Gym or crag (optional)").set_value("Imaginary gym")
+        next(w for w in at.text_input if w.label == "Route or problem name (optional)").set_value("One route")
+        self._button(at, "Save climb").click()
+        at = self._run(at)
+        self.assertEqual(at.selectbox(key="quick_grade_Boulder").value, "V4")
+        self.assertEqual(next(w.value for w in at.text_input if w.label == "Gym or crag (optional)"), "Imaginary gym")
+        self.assertEqual(next(w.value for w in at.text_input if w.label == "Route or problem name (optional)"), "")
+        self._button(at, "Save climb").click()
+        self._run(at)
+        records = profile_manager.get_climbs(USER)
+        self.assertEqual([c["grade"] for c in records], ["V4", "V4"])
+        self.assertEqual([c["route_name"] for c in records], ["", "One route"])
+        next(w for w in at.text_input if w.label == "Climber Name").set_value("Other")
+        at = self._run(at)
+        self.assertEqual(at.selectbox(key="quick_grade_Boulder").value, "VB")
+        self.assertEqual(next(w.value for w in at.text_input if w.label == "Gym or crag (optional)"), "")
+
+
+    def test_language_change_from_phone_refreshes_main_app_and_marks_english_help(self):
+        from harnesssync.i18n import translate
+        at = self._run()
+        profile_manager.set_language(USER, "ja")
+        at = self._run(at)
+        self.assertEqual(at.selectbox(key="ui_language").value, "ja")
+        at = self._tab(at, translate("📖 Guide & Reference", "ja"))
+        self.assertTrue(any("English" in e.value or "英語" in e.value for e in at.info))
+
+    def test_progress_views_render_in_every_supported_language(self):
+        from harnesssync.i18n import LANGUAGES, translate
+        at = self._run()
+        profile_manager.log_climb(USER, "Boulder", "V2", "Sent", "2026-01-01")
+        for language in LANGUAGES:
+            at.selectbox(key="ui_language").set_value(language)
+            at = self._run(at)
+            at = self._tab(at, translate("📊 Progress", language))
+            for view in ("Personal goals", "Session recaps", "Achievements"):
+                at.segmented_control(key="progress_view").set_value(view)
+                at = self._run(at)
+                self.assertIn(translate(view, language), [e.value for e in at.subheader])
 
     def test_every_tab_renders_with_data(self):
         self._run()  # creates the dev profile

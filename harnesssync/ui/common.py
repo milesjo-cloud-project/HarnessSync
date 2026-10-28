@@ -8,6 +8,8 @@ from zoneinfo import ZoneInfo
 
 import streamlit as st
 
+from harnesssync.ui.language import tr
+
 from harnesssync.leaderboard_engine import compile_leaderboard
 
 
@@ -102,14 +104,14 @@ def render_safely(area, render, *args):
         render(*args)
     except Exception as error:
         reference = report_crash(error, area)
-        st.error(f"{area} couldn't load. Other sections are still available.")
+        st.error(tr("{area} couldn't load. Other sections are still available.", area=tr(area)))
         if reference:
-            st.caption(f"Issue recorded: {reference}. Include this reference in your report.")
+            st.caption(tr("Issue recorded: {reference}. Include this reference in your report.", reference=reference))
         else:
-            st.caption("We couldn't save an automatic report. Please use the support link.")
-        if st.button("Try again", key=f"retry_{area}"):
+            st.caption(tr("We couldn't save an automatic report. Please use the support link."))
+        if st.button(tr("Try again"), key=f"retry_{area}"):
             st.rerun()
-        st.link_button("Get help", HELP_URL)
+        st.link_button(tr("Get help"), HELP_URL)
 
 
 def flash(kind, message=""):

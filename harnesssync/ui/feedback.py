@@ -1,5 +1,7 @@
 """Static help, private reports, and an owner-controlled repair handoff."""
 import streamlit as st
+
+from harnesssync.ui.language import option_label, tr, current_language
 import sqlalchemy as sa
 
 from harnesssync import feedback_manager as tickets
@@ -13,26 +15,28 @@ from harnesssync.ui.common import flash, render_safely
 
 
 def render(user_id, display_name):
-    st.header("Help & report a problem")
-    st.caption("Get help, tell us what failed, and follow your reports here.")
-    st.link_button("Can't sign in or use the app?", HELP_URL)
-    with st.expander("Quick help"):
-        topic = st.selectbox("What do you need help with?", list(HELP))
+    st.header(tr("Help & report a problem"))
+    st.caption(tr("Get help, tell us what failed, and follow your reports here."))
+    st.link_button(tr("Can't sign in or use the app?"), HELP_URL)
+    if current_language() != "en":
+        st.caption(tr("Some help articles and administrative tools are currently available in English."))
+    with st.expander(tr("Quick help")):
+        topic = st.selectbox(tr("What do you need help with?"), list(HELP))
         st.write(HELP[topic])
-    st.subheader("Send a report or idea")
+    st.subheader(tr("Send a report or idea"))
     # Rotate form keys only after success; validation/storage failures retain the draft.
     version = st.session_state.get("report_form_version", 0)
     with st.form(f"feedback_form_{version}"):
-        category = st.selectbox("Category", tickets.CATEGORIES)
-        area = st.selectbox("Affected area", tickets.AREAS)
-        rating = st.slider("Overall, how's the app working for you?", 1, 5, 4)
-        message = st.text_area("What happened or what would you like?", max_chars=tickets.MESSAGE_MAX)
-        steps = st.text_area("Steps to reproduce (optional)", max_chars=tickets.MESSAGE_MAX,
-                             placeholder="What did you click? Include your browser and phone/computer type if relevant.")
-        expected = st.text_area("What did you expect? (optional)", max_chars=tickets.MESSAGE_MAX)
-        reference = st.text_input("Incident reference (optional)", max_chars=40, placeholder="INC-...")
-        st.caption("Reports are visible to you and the owner. The owner may use reviewed, redacted details with coding tools to investigate. Don't include passwords, codes, or sensitive personal details.")
-        submitted = st.form_submit_button("Send report", type="primary", width="stretch")
+        category = st.selectbox(tr("Category"), tickets.CATEGORIES, format_func=option_label())
+        area = st.selectbox(tr("Affected area"), tickets.AREAS, format_func=option_label())
+        rating = st.slider(tr("Overall, how's the app working for you?"), 1, 5, 4)
+        message = st.text_area(tr("What happened or what would you like?"), max_chars=tickets.MESSAGE_MAX)
+        steps = st.text_area(tr("Steps to reproduce (optional)"), max_chars=tickets.MESSAGE_MAX,
+                             placeholder=tr("What did you click? Include your browser and phone/computer type if relevant."))
+        expected = st.text_area(tr("What did you expect? (optional)"), max_chars=tickets.MESSAGE_MAX)
+        reference = st.text_input(tr("Incident reference (optional)"), max_chars=40, placeholder="INC-...")
+        st.caption(tr("Reports are visible to you and the owner. The owner may use reviewed, redacted details with coding tools to investigate. Don't include passwords, codes, or sensitive personal details."))
+        submitted = st.form_submit_button(tr("Send report"), type="primary", width="stretch")
     if submitted:
         try:
             entry = tickets.submit_feedback(user_id, display_name, category, rating, message,
@@ -40,32 +44,32 @@ def render(user_id, display_name):
         except ValueError as error:
             st.warning(str(error))
         except Exception:
-            st.error("We couldn't save your report. Your draft is still here; please try again.")
+            st.error(tr("We couldn't save your report. Your draft is still here; please try again."))
         else:
             try:
                 deliver_pending(limit=1, event_key=f"ticket:{entry['id']}")
             except Exception:
                 pass  # report + notification are committed; delivery can retry later
             st.session_state["report_form_version"] = version + 1
-            flash("success", f"Report {tickets.ticket_ref(entry['id'])} received. Follow it in My reports.")
+            flash("success", tr("Report {reference} received. Follow it in My reports.", reference=tickets.ticket_ref(entry['id'])))
             st.rerun()
 
-    st.subheader("My reports")
-    st.caption("Owner replies and status changes appear here. Refresh to check for updates.")
-    if st.button("Refresh reports"):
+    st.subheader(tr("My reports"))
+    st.caption(tr("Owner replies and status changes appear here. Refresh to check for updates."))
+    if st.button(tr("Refresh reports")):
         st.rerun()
     entries = tickets.load_feedback(user_id)
     if not entries:
-        st.info("Your submitted reports will appear here.")
+        st.info(tr("Your submitted reports will appear here."))
     for entry in entries:
-        with st.expander(f"{tickets.ticket_ref(entry['id'])} · {entry['status']} · {entry['area']}"):
+        with st.expander(f"{tickets.ticket_ref(entry['id'])} · {tr(entry['status'])} · {tr(entry['area'])}"):
             st.caption(f"Submitted {entry['submitted_at']} · Updated {entry['updated_at'] or entry['submitted_at']}")
             st.text(entry["message"])
             if entry["owner_reply"]:
-                st.write("Owner reply")
+                st.write(tr("Owner reply"))
                 st.text(entry["owner_reply"])
             else:
-                st.caption("No owner reply yet.")
+                st.caption(tr("No owner reply yet."))
     if is_owner(user_id):
         with st.expander("Owner support dashboard"):
             render_safely("Owner support", render_owner, user_id)

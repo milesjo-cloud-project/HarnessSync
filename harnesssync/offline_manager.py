@@ -92,16 +92,21 @@ def _validate(operation):
     return operation_id, entry, _hash(json.dumps(entry, sort_keys=True, ensure_ascii=True))
 
 
-def synchronize(token, operations):
+def synchronize(token, operations, language=None):
     """Acknowledge only committed writes; a lost response is safe to retry."""
     if not isinstance(operations, list) or len(operations) > 100:
         raise ValueError("Sync accepts at most 100 entries at a time.")
+    from harnesssync.i18n import LANGUAGES
+    if language is not None and (not isinstance(language, str) or language not in LANGUAGES):
+        raise ValueError("Unsupported language.")
     validated = [_validate(op) for op in operations]
     with get_db() as conn:
         user_id = _authenticate(conn, token)
         # Serialize device batches for the same account, including separate devices.
         if conn.dialect.name == "postgresql":
             conn.execute(sa.select(profiles.c.user_id).where(profiles.c.user_id == user_id).with_for_update())
+        if language is not None:
+            conn.execute(profiles.update().where(profiles.c.user_id == user_id).values(language=language))
         insert = sqlite_insert if conn.dialect.name == "sqlite" else pg_insert
         acknowledged = []
         for operation_id, entry, payload_hash in validated:
@@ -123,6 +128,7 @@ def synchronize(token, operations):
             acknowledged.append(operation_id)
         snapshot = {
             "account": user_id,
+            "language": conn.execute(sa.select(profiles.c.language).where(profiles.c.user_id == user_id)).scalar_one(),
             "downloaded_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
             "climbs": rows(conn.execute(sa.select(climbs).where(climbs.c.user_id == user_id).order_by(climbs.c.date.desc(), climbs.c.id.desc()))),
             "projects": rows(conn.execute(sa.select(projects).where(projects.c.user_id == user_id).order_by(projects.c.id.desc()))),
