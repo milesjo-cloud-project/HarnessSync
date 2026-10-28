@@ -38,6 +38,7 @@ profiles = sa.Table(
     # Start time of a running session timer, so it survives a page reload
     # (phones often reload a backgrounded tab mid-session). NULL when idle.
     sa.Column("active_session_started", sa.String(32), nullable=True),
+    sa.Column("language", sa.String(10), nullable=False, server_default="en"),
 )
 
 climbs = sa.Table(
@@ -70,6 +71,17 @@ projects = sa.Table(
     sa.Column("hold_type", sa.String(20), nullable=False, default="Mixed"),
     sa.Column("attempts", sa.Integer, nullable=False, default=1),
     sa.Column("notes", sa.Text, nullable=False, default=""),
+)
+
+goals = sa.Table(
+    "goals", metadata,
+    sa.Column("id", sa.Integer, primary_key=True, autoincrement=True),
+    sa.Column("user_id", sa.String(320), nullable=False, index=True),
+    sa.Column("kind", sa.String(20), nullable=False),
+    sa.Column("discipline", sa.String(20), nullable=False),
+    sa.Column("target", sa.Integer, nullable=False),
+    sa.Column("start_date", sa.String(10), nullable=False),
+    sa.Column("end_date", sa.String(10), nullable=False),
 )
 
 sessions = sa.Table(
@@ -233,6 +245,7 @@ def _add_missing_columns(engine):
     additions = [
         ("climbs", "notes", "TEXT NOT NULL DEFAULT ''"),
         ("profiles", "active_session_started", "VARCHAR(32)"),
+        ("profiles", "language", "VARCHAR(10) NOT NULL DEFAULT 'en'"),
         ("feedback", "area", "VARCHAR(40) NOT NULL DEFAULT 'General'"),
         ("feedback", "steps", "TEXT NOT NULL DEFAULT ''"),
         ("feedback", "expected", "TEXT NOT NULL DEFAULT ''"),

@@ -58,6 +58,27 @@ const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
   await context.setOffline(true);
   await page.reload();
   await page.getByText("Offline page downloaded.", {exact: false}).waitFor();
+  // Language assets must work without networking and preserve canonical form
+  // values and draft text when the visible labels change.
+  await page.locator("#log-details summary").click();
+  await page.locator('[name="route_name"]').fill("Fictional multilingual draft");
+  for (const [language, saveLabel] of [["es", "Guardar en este dispositivo"], ["fr", "Enregistrer sur cet appareil"],
+      ["ja", "この端末に保存"], ["ko", "이 기기에 저장"], ["zh", "保存到此设备"]]) {
+    await page.locator("#language").selectOption(language);
+    await page.waitForFunction(async code => (await readLocal()).state.languagePending === code, language);
+    assert.equal(await page.locator("#save").textContent(), saveLabel);
+    assert.equal(await page.locator('[name="discipline"]').inputValue(), "Boulder");
+    assert.equal(await page.locator('[name="status"]').inputValue(), "Sent");
+    assert.equal(await page.locator('[name="route_name"]').inputValue(), "Fictional multilingual draft");
+  }
+  await page.reload();
+  await page.getByRole("button", {name: "保存到此设备", exact: true}).waitFor();
+  assert.equal(await page.locator("#language").inputValue(), "zh");
+  assert.equal(await page.locator("html").getAttribute("lang"), "zh-Hans");
+  await page.locator("#language").selectOption("en");
+  await page.getByText("Offline page downloaded.", {exact: false}).waitFor();
+  await page.waitForFunction(async () => (await readLocal()).state.languagePending === "en");
+  await page.locator("#log-details summary").click();
   await page.locator("#grade").selectOption("V3");
   await page.getByLabel("Route or problem name").fill("Offline fictional send");
   await page.getByRole("button", {name: "Save on this device"}).click();
@@ -123,6 +144,25 @@ const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
   await page.waitForFunction(() => document.getElementById("status").textContent.includes("Up to date"), null, {timeout: 60000});
   assert.match(await page.locator("#progress").textContent(), /2 logged climbs/);
   assert.match(await page.locator("#projects").textContent(), /2 attempts/);
+  // Defaults survive reopening without reusing a route name. Language changes
+  // on the phone must reach the same account and return on a fresh device.
+  assert.equal(await page.locator("#grade").inputValue(), "V3");
+  assert.equal(await page.locator('[name="route_name"]').inputValue(), "");
+  await page.locator("#log-details summary").click();
+  await page.locator("#language").selectOption("fr");
+  await page.waitForFunction(async () => !syncing && (await readLocal()).state.snapshot.language === "fr");
+  const languageContext = await browser.newContext();
+  const languagePage = await languageContext.newPage();
+  await languagePage.goto(connection);
+  await languagePage.waitForFunction(() => !syncing && state?.snapshot.language === "fr" && hsSelector.value === "fr");
+  assert.equal(await languagePage.locator("#language").inputValue(), "fr");
+  await languagePage.locator("#language").selectOption("ja");
+  await languagePage.waitForFunction(async () => !syncing && (await readLocal()).state.snapshot.language === "ja");
+  await languageContext.close();
+  await page.locator("#sync").click();
+  await page.waitForFunction(() => !syncing && hsLanguage === "ja");
+  await page.locator("#language").selectOption("en");
+  await page.waitForFunction(() => !syncing && state?.snapshot.language === "en");
   // Commit on the server, then lose the acknowledgement. The retry must not insert twice.
   await page.route("**/offline/api/sync", async route => {
     await route.fetch();

@@ -54,6 +54,24 @@ def test_retry_does_not_duplicate_send_or_attempt(device):
     assert pm.get_projects("fictional:alex")[0]["attempts"] == 2
 
 
+def test_language_sync_is_account_scoped_and_legacy_clients_read_it(device):
+    assert offline.synchronize(device, [], "ja")["snapshot"]["language"] == "ja"
+    assert pm.get_profile("fictional:alex")["language"] == "ja"
+    assert pm.get_profile("fictional:blair")["language"] == "en"
+    pm.set_language("fictional:alex", "fr")
+    assert offline.synchronize(device, [])["snapshot"]["language"] == "fr"
+    with pytest.raises(ValueError):
+        offline.synchronize(device, [operation()], "unsupported")
+    assert pm.get_climbs("fictional:alex") == []
+    with TestClient(Starlette(routes=routes)) as client:
+        for value in (None, 42, "unsupported"):
+            response = client.post("/offline/api/sync", headers={"Authorization": f"Bearer {device}"},
+                                   json={"operations": [], "language": value})
+            assert response.status_code == 400
+        assert client.post("/offline/api/sync", headers={"Authorization": f"Bearer {device}"},
+                           json={"operations": [], "language": "ko"}).json()["snapshot"]["language"] == "ko"
+
+
 def test_concurrent_retries_are_safe(device):
     op = operation("Attempt")
     with ThreadPoolExecutor(max_workers=3) as pool:

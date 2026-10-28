@@ -4,47 +4,48 @@
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#1f5948"><title>HarnessSync offline log</title>
   <link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon.svg">
-  <link rel="stylesheet" href="style.css"><script src="app.js" defer></script>
+  <link rel="stylesheet" href="style.css"><script src="locales.js" defer></script><script src="i18n.js" defer></script><script src="app.js" defer></script>
 </head>
 <body>
 <main>
-  <h1>HarnessSync</h1><p>Log at the crag. Sync when you reconnect.</p>
-  <p id="status" role="status" aria-live="polite">Opening device storage…</p>
-  <p id="ready">Offline setup has not finished.</p>
-  <p id="account"></p>
-  <button id="sync" type="button">Sync now</button>
-  <p id="error" role="alert"></p>
-  <section><h2>Log a climb</h2>
+  <h1>HarnessSync</h1><label>Language / Idioma / Langue / 言語 / 언어 / 语言<select id="language"></select></label><p data-i18n="Log at the crag. Sync when you reconnect.">Log at the crag. Sync when you reconnect.</p>
+  <p data-i18n="Language changes sync with your account when online.">Language changes sync with your account when online.</p>
+  <section><h2 data-i18n="Log a climb">Log a climb</h2>
     <form id="log">
-      <label>Discipline<select name="discipline" id="discipline"><option>Boulder</option><option>Rope</option></select></label>
-      <label>Grade<select name="grade" id="grade"></select></label>
-      <label>What happened?<select name="status"><option>Sent</option><option>Flash</option><option>Onsight</option><option>Redpoint</option><option>Attempt</option><option>Project</option></select></label>
-      <label>Date<input name="date" id="date" type="date" required></label>
-      <label>Route or problem name<input name="route_name" maxlength="80"></label>
-      <label>Gym or crag<input name="location" maxlength="80"></label>
-      <label>Environment<select name="environment"><option>Outdoor</option><option>Gym</option></select></label>
-      <details><summary>More details</summary>
-        <label>Wall angle<select name="angle"><option>Vertical</option><option>Slab</option><option>Overhang</option><option>Roof</option></select></label>
-        <label>Hold type<select name="hold_type"><option>Mixed</option><option>Crimps</option><option>Slopers</option><option>Jugs</option><option>Pinches</option><option>Pockets</option></select></label>
-        <label>Notes<textarea name="notes" maxlength="500"></textarea></label>
+      <label><span data-i18n="Discipline">Discipline</span><select name="discipline" id="discipline"><option value="Boulder" data-i18n="Boulder">Boulder</option><option value="Rope" data-i18n="Rope">Rope</option></select></label>
+      <label><span data-i18n="Grade">Grade</span><select name="grade" id="grade"></select></label>
+      <label><span data-i18n="What happened?">What happened?</span><select name="status"><option value="Sent" data-i18n="Sent">Sent</option><option value="Flash" data-i18n="Flash">Flash</option><option value="Onsight" data-i18n="Onsight">Onsight</option><option value="Redpoint" data-i18n="Redpoint">Redpoint</option><option value="Attempt" data-i18n="Attempt">Attempt</option><option value="Project" data-i18n="Project">Project</option></select></label>
+      <details id="log-details"><summary data-i18n="More details">More details</summary>
+      <label><span data-i18n="Date">Date</span><input name="date" id="date" type="date" required></label>
+      <label><span data-i18n="Route or problem name">Route or problem name</span><input name="route_name" maxlength="80"></label>
+      <label><span data-i18n="Gym or crag">Gym or crag</span><input name="location" maxlength="80"></label>
+      <label><span data-i18n="Environment">Environment</span><select name="environment"><option value="Gym" data-i18n="Gym">Gym</option><option value="Outdoor" data-i18n="Outdoor">Outdoor</option></select></label>
+        <label><span data-i18n="Wall angle">Wall angle</span><select name="angle"><option value="Vertical" data-i18n="Vertical">Vertical</option><option value="Slab" data-i18n="Slab">Slab</option><option value="Overhang" data-i18n="Overhang">Overhang</option><option value="Roof" data-i18n="Roof">Roof</option></select></label>
+        <label><span data-i18n="Hold type">Hold type</span><select name="hold_type"><option value="Mixed" data-i18n="Mixed">Mixed</option><option value="Crimps" data-i18n="Crimps">Crimps</option><option value="Slopers" data-i18n="Slopers">Slopers</option><option value="Jugs" data-i18n="Jugs">Jugs</option><option value="Pinches" data-i18n="Pinches">Pinches</option><option value="Pockets" data-i18n="Pockets">Pockets</option></select></label>
+        <label><span data-i18n="Notes">Notes</span><textarea name="notes" maxlength="500"></textarea></label>
       </details>
-      <button type="submit" id="save" disabled>Save on this device</button>
+      <button type="submit" id="save" disabled data-i18n="Save on this device">Save on this device</button>
     </form>
   </section>
-  <section><h2>Waiting to sync</h2><p>Entries stay here until the server confirms saving them.</p><ul id="pending"></ul></section>
-  <section><h2>Downloaded projects</h2><p>Use “Add attempt” to queue another attempt. Editing or completing an existing project is available in the main app.</p><ul id="projects"></ul></section>
-  <section><h2>Downloaded progress</h2><p id="downloaded"></p><p id="progress"></p><ul id="history"></ul></section>
-  <section><h2>This device</h2>
-    <p>Your downloaded log and device access are stored in this browser. Use a private device. Browser data removal or private browsing can erase unsynced entries.</p>
-    <p>Automatic sync runs while this page is open, including when you return to it. Closed apps wait until you reopen them. Device access expires after 30 days; reconnect from the Phone App tab to renew it.</p>
-    <button id="backup" type="button">Export unsynced entries</button>
-    <label>Restore an unsynced backup<input id="restore-file" type="file" accept=".json,application/json"></label>
-    <button id="restore" type="button" disabled>Restore backup</button>
+  <p id="status" role="status" aria-live="polite" data-i18n="Opening device storage…">Opening device storage…</p>
+  <p id="ready" data-i18n="Offline setup has not finished.">Offline setup has not finished.</p>
+  <p id="account"></p>
+  <button id="sync" type="button" data-i18n="Sync now">Sync now</button>
+  <p id="error" role="alert"></p>
+  <section><h2 data-i18n="Waiting to sync">Waiting to sync</h2><p data-i18n="Entries stay here until the server confirms saving them.">Entries stay here until the server confirms saving them.</p><ul id="pending"></ul></section>
+  <section><h2 data-i18n="Downloaded projects">Downloaded projects</h2><p data-i18n="Use “Add attempt” to queue another attempt. Editing or completing an existing project is available in the main app.">Use “Add attempt” to queue another attempt. Editing or completing an existing project is available in the main app.</p><ul id="projects"></ul></section>
+  <section><h2 data-i18n="Downloaded progress">Downloaded progress</h2><p id="downloaded"></p><p id="progress"></p><ul id="history"></ul></section>
+  <section><h2 data-i18n="This device">This device</h2>
+    <p data-i18n="Your downloaded log and device access are stored in this browser. Use a private device. Browser data removal or private browsing can erase unsynced entries.">Your downloaded log and device access are stored in this browser. Use a private device. Browser data removal or private browsing can erase unsynced entries.</p>
+    <p data-i18n="Automatic sync runs while this page is open, including when you return to it. Closed apps wait until you reopen them. Device access expires after 30 days; reconnect from the Phone App tab to renew it.">Automatic sync runs while this page is open, including when you return to it. Closed apps wait until you reopen them. Device access expires after 30 days; reconnect from the Phone App tab to renew it.</p>
+    <button id="backup" type="button" data-i18n="Export unsynced entries">Export unsynced entries</button>
+    <label><span data-i18n="Restore an unsynced backup">Restore an unsynced backup</span><input id="restore-file" type="file" accept=".json,application/json"></label>
+    <button id="restore" type="button" disabled data-i18n="Restore backup">Restore backup</button>
     <p id="restore-status" role="status" aria-live="polite"></p>
-    <p>Connect the same account before restoring. Backups contain climbing data, so keep them private.
+    <p data-i18n="Connect the same account before restoring. Backups contain climbing data, so keep them private. Restoration merges entries into your queue; importing a backup again will not duplicate saved climbs.">Connect the same account before restoring. Backups contain climbing data, so keep them private.
       Restoration merges entries into your queue; importing a backup again will not duplicate saved climbs.</p>
-    <button id="forget" type="button">Remove data from this device</button>
-    <a href="../">Open main app</a>
+    <button id="forget" type="button" data-i18n="Remove data from this device">Remove data from this device</button>
+    <a href="../" data-i18n="Open main app">Open main app</a>
   </section>
 </main>
 </body></html>
