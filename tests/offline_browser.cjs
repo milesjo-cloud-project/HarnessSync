@@ -31,6 +31,14 @@ const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
   await page.clock.install();
   page.setDefaultTimeout(60000);
   const errors = [];
+  const languageTrace = [];
+  page.on("response", async response => {
+    if (response.url().endsWith("/offline/api/sync") && response.ok()) {
+      const request = response.request().postDataJSON();
+      const result = await response.json().catch(() => ({}));
+      languageTrace.push({sent: request.language || null, received: result.snapshot?.language});
+    }
+  });
   page.on("pageerror", error => errors.push(error.message));
   await page.goto(`http://127.0.0.1:${port}/`);
   await page.getByRole("tab", {name: "📱 Phone App", exact: true}).click();
@@ -166,7 +174,9 @@ const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
   await page.waitForFunction(() => document.visibilityState === "visible" && !syncing);
   const languageRefresh = page.waitForResponse("**/offline/api/sync");
   await page.locator("#sync").click();
-  assert.equal((await languageRefresh).status(), 200);
+  const languageResponse = await languageRefresh;
+  assert.equal(languageResponse.status(), 200);
+  assert.equal((await languageResponse.json()).snapshot.language, "ja", JSON.stringify(languageTrace));
   await page.waitForFunction(() => !syncing && hsLanguage === "ja" && hsSelector.value === "ja");
   await page.locator("#language").selectOption("en");
   await page.waitForFunction(() => !syncing && state?.snapshot.language === "en");
@@ -190,6 +200,10 @@ const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 })().catch(async error => {
   console.error(error);
   if (page) {
+    console.error(await page.evaluate(async () => ({visibility: document.visibilityState,
+      syncing, displayedLanguage: hsLanguage, selectedLanguage: hsSelector.value,
+      snapshotLanguage: (await readLocal()).state?.snapshot.language,
+      pendingLanguage: (await readLocal()).state?.languagePending})));
     console.error(await page.locator("body").innerText());
     await page.screenshot({path: path.join(folder, "failure.png"), fullPage: true});
   }
