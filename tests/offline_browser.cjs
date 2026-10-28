@@ -165,8 +165,11 @@ const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
   await languagePage.bringToFront();
   await languagePage.waitForFunction(() => !syncing && state?.snapshot.language === "fr" && hsSelector.value === "fr");
   assert.equal(await languagePage.locator("#language").inputValue(), "fr");
+  const japaneseSave = languagePage.waitForResponse(response => response.url().endsWith("/offline/api/sync")
+    && response.request().postDataJSON()?.language === "ja");
   await languagePage.locator("#language").selectOption("ja");
-  await languagePage.waitForFunction(async () => !syncing && (await readLocal()).state.snapshot.language === "ja");
+  assert.equal((await (await japaneseSave).json()).snapshot.language, "ja");
+  await languagePage.waitForFunction(() => !syncing && state?.snapshot.language === "ja" && !state.languagePending);
   await languageContext.close();
   // Returning from the second device can trigger a visibility refresh. Wait
   // until it finishes: sync() deliberately skips hidden or already-syncing pages.
