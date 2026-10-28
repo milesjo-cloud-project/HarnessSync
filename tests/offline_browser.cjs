@@ -154,13 +154,20 @@ const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
   const languageContext = await browser.newContext();
   const languagePage = await languageContext.newPage();
   await languagePage.goto(connection);
+  await languagePage.bringToFront();
   await languagePage.waitForFunction(() => !syncing && state?.snapshot.language === "fr" && hsSelector.value === "fr");
   assert.equal(await languagePage.locator("#language").inputValue(), "fr");
   await languagePage.locator("#language").selectOption("ja");
   await languagePage.waitForFunction(async () => !syncing && (await readLocal()).state.snapshot.language === "ja");
   await languageContext.close();
+  // Returning from the second device can trigger a visibility refresh. Wait
+  // until it finishes: sync() deliberately skips hidden or already-syncing pages.
+  await page.bringToFront();
+  await page.waitForFunction(() => document.visibilityState === "visible" && !syncing);
+  const languageRefresh = page.waitForResponse("**/offline/api/sync");
   await page.locator("#sync").click();
-  await page.waitForFunction(() => !syncing && hsLanguage === "ja");
+  assert.equal((await languageRefresh).status(), 200);
+  await page.waitForFunction(() => !syncing && hsLanguage === "ja" && hsSelector.value === "ja");
   await page.locator("#language").selectOption("en");
   await page.waitForFunction(() => !syncing && state?.snapshot.language === "en");
   // Commit on the server, then lose the acknowledgement. The retry must not insert twice.
