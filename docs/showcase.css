@@ -496,6 +496,22 @@ h3{
   font-size:12px;
 }
 /* Browser-only demo */
+.offline-tools {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  padding: 12px 0;
+}
+.offline-tools p {
+  width: 100%;
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+.offline-tools a {
+  font-size: 13px;
+}
 .demo-heading{
   display:flex;
   justify-content:space-between;

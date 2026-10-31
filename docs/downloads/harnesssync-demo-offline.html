@@ -1,0 +1,1244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Try HarnessSync — Interactive demo</title>
+  <meta name="description" content="Explore HarnessSync with fictional climbs. Log a climb, track a project, and see your progress without an account.">
+  <meta name="theme-color" content="#f5f3eb">
+  <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA5NiA5NiI+CiAgPCEtLSBNb3VudGFpbiBwZWFrLiBTVkcgZmF2aWNvbnMgaG9ub3VyIHByZWZlcnMtY29sb3Itc2NoZW1lLCBzbyB0aGUgbWFyawogICAgICAgc3RheXMgbGVnaWJsZSBhZ2FpbnN0IGJvdGggYSBsaWdodCBhbmQgYSBkYXJrIGJyb3dzZXIgdGFiIHN0cmlwLiAtLT4KICA8c3R5bGU+CiAgICBwYXRoIHsgZmlsbDogIzE0NTM5ZjsgfQogICAgQG1lZGlhIChwcmVmZXJzLWNvbG9yLXNjaGVtZTogZGFyaykgeyBwYXRoIHsgZmlsbDogIzdlYjZmZDsgfSB9CiAgPC9zdHlsZT4KICA8cGF0aCBkPSJNOCA4MCBMMzYgMzAgTDQ4IDUwIEw2MCAyMiBMODggODAgWiIvPgo8L3N2Zz4K" type="image/svg+xml">
+  <style>
+/* Shared presentation site and demo. No external assets or fonts. */
+:root{
+  color-scheme:light;
+  --paper:#f5f3eb;
+  --ink:#173e36;
+  --muted:#53665e;
+  --line:#d6dcd1;
+  --white:#fffef9;
+  --lime:#d5ef83;
+  --orange:#b85531;
+  --soft:#e9eddf;
+}
+*{
+  box-sizing:border-box;
+}
+html{
+  scroll-behavior:smooth;
+  scroll-padding-top:30px;
+}
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font:16px/1.65 "Segoe UI",Arial,sans-serif;
+}
+a{
+  color:inherit;
+  text-underline-offset:5px;
+}
+button,input,select,textarea{
+  font:inherit;
+}
+button,a,input,select,textarea{
+  touch-action:manipulation;
+}
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{
+  outline:3px solid var(--orange);
+  outline-offset:4px;
+}
+button{
+  cursor:pointer;
+}
+.wrap{
+  width:min(1180px,calc(100% - 80px));
+  margin-inline:auto;
+}
+.skip{
+  position:absolute;
+  top:-100px;
+  left:20px;
+  background:var(--white);
+  padding:12px;
+  z-index:10;
+}
+.skip:focus{
+  top:10px;
+}
+.site-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:24px;
+  min-height:108px;
+  border-bottom:1px solid var(--line);
+}
+.wordmark{
+  font-size:22px;
+  font-weight:750;
+  text-decoration:none;
+  letter-spacing:-.8px;
+  display:inline-flex;
+  align-items:center;
+  gap:12px;
+}
+.brand-mark{
+  display:grid;
+  place-items:center;
+  width:36px;
+  height:36px;
+  background:var(--ink);
+  color:var(--lime);
+  border-radius:50%;
+  font-size:17px;
+  letter-spacing:-3px;
+  padding-right:3px;
+}
+nav{
+  display:flex;
+  gap:28px;
+  align-items:center;
+}
+nav a{
+  text-decoration:none;
+  font-size:14px;
+  font-weight:600;
+}
+.button{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:24px;
+  background:var(--ink);
+  color:var(--white);
+  border:1px solid var(--ink);
+  border-radius:6px;
+  padding:14px 22px;
+  text-decoration:none;
+  font-weight:650;
+  font-size:15px;
+  line-height:1.5;
+}
+.button:hover{
+  background:#285b4e;
+}
+.button.small{
+  padding:10px 17px;
+  font-size:13px;
+}
+.button.lime{
+  background:var(--lime);
+  color:var(--ink);
+  border-color:var(--lime);
+}
+.button.secondary{
+  background:transparent;
+  color:var(--ink);
+  border-color:var(--line);
+}
+.button.secondary:hover{
+  background:var(--soft);
+}
+.text-link{
+  font-weight:650;
+  font-size:15px;
+}
+.eyebrow{
+  font-size:11px;
+  text-transform:uppercase;
+  letter-spacing:1.7px;
+  font-weight:750;
+}
+.dot{
+  display:inline-block;
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:var(--orange);
+  margin-right:8px;
+}
+.hero{
+  display:grid;
+  grid-template-columns:1.05fr 1fr;
+  align-items:center;
+  gap:54px;
+  padding-block:78px 90px;
+}
+h1{
+  font-size:clamp(64px,7.6vw,102px);
+  line-height:1.01;
+  letter-spacing:-6px;
+  font-weight:600;
+  margin:25px 0;
+}
+h1 em{
+  font-family:Georgia,serif;
+  font-weight:400;
+  color:var(--orange);
+}
+.lead{
+  font-size:19px;
+  line-height:1.7;
+  max-width:490px;
+  color:var(--muted);
+}
+.actions{
+  display:flex;
+  gap:24px;
+  align-items:center;
+  flex-wrap:wrap;
+  margin-top:30px;
+}
+.fine{
+  font-size:12px;
+  color:var(--muted);
+  margin-top:18px;
+}
+.hero-visual{
+  background:#dce3cf;
+  border-radius:120px 12px 12px 12px;
+  position:relative;
+  padding:56px 30px 26px;
+  overflow:hidden;
+}
+.contour{
+  position:absolute;
+  border:1px solid #b6c7a7;
+  pointer-events:none;
+  transform:rotate(-30deg);
+  border-radius:45%;
+  width:620px;
+  height:350px;
+  left:-30px;
+  top:0;
+  box-shadow:0 0 0 22px #dce3cf,0 0 0 23px #b6c7a7,0 0 0 48px #dce3cf,0 0 0 49px #b6c7a7;
+}
+.preview-card{
+  position:relative;
+  background:var(--white);
+  border:1px solid #b8c4b1;
+  border-radius:10px;
+  padding:28px;
+  box-shadow:0 18px 35px #173e3614;
+}
+.preview-top{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  align-items:center;
+}
+.preview-top .eyebrow{
+  font-size:9px;
+}
+.sample-label{
+  font-size:10px;
+  background:var(--soft);
+  padding:3px 8px;
+  border-radius:4px;
+  white-space:nowrap;
+}
+.preview-title{
+  font-size:29px;
+  line-height:1.2;
+  letter-spacing:-1px;
+  margin-top:22px;
+  font-weight:600;
+}
+.mini-stats{
+  display:flex;
+  justify-content:space-between;
+  margin:25px 0;
+  padding-bottom:22px;
+  border-bottom:1px solid var(--line);
+  gap:12px;
+}
+.mini-stats strong{
+  display:block;
+  font-size:28px;
+  line-height:1.2;
+  font-weight:600;
+}
+.mini-stats span{
+  font-size:10px;
+  color:var(--muted);
+}
+.mini-pyramid{
+  display:grid;
+  gap:8px;
+}
+.mini-pyramid>div{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  font-size:11px;
+}
+.mini-pyramid span{
+  width:18px;
+}
+.mini-pyramid i{
+  display:block;
+  width:calc(var(--w)*.72);
+  height:17px;
+  background:#8fa785;
+  border-radius:2px;
+}
+.mini-pyramid>div:first-child i{
+  background:var(--orange);
+}
+.mini-pyramid b{
+  font-weight:400;
+  color:var(--muted);
+}
+.preview-project{
+  display:flex;
+  gap:12px;
+  align-items:center;
+  background:var(--soft);
+  padding:15px 12px;
+  margin-top:25px;
+  border-radius:5px;
+  font-size:12px;
+}
+.preview-project>span:last-child{
+  margin-left:auto;
+}
+.preview-project small{
+  display:block;
+  font-size:10px;
+  color:var(--muted);
+}
+.route-dot{
+  width:10px;
+  height:10px;
+  flex-shrink:0;
+  background:var(--orange);
+  border-radius:50%;
+}
+.visual-caption{
+  position:relative;
+  text-align:center;
+  font-size:11px;
+  letter-spacing:1px;
+  text-transform:uppercase;
+  margin:22px 0 0;
+}
+.discipline-strip{
+  border-block:1px solid var(--line);
+}
+.discipline-strip .wrap{
+  display:flex;
+  justify-content:space-between;
+  gap:20px;
+  flex-wrap:wrap;
+  padding-block:21px;
+  font-size:11px;
+  letter-spacing:1.5px;
+}
+.discipline-strip span:first-child{
+  letter-spacing:0;
+  font-size:13px;
+  color:var(--muted);
+}
+.section{
+  padding-block:95px;
+}
+h2{
+  font-size:clamp(32px,4vw,49px);
+  line-height:1.15;
+  letter-spacing:-1.8px;
+  font-weight:550;
+  margin:16px 0 24px;
+}
+h3{
+  font-size:25px;
+  line-height:1.25;
+  letter-spacing:-.6px;
+  font-weight:600;
+}
+.section-intro{
+  max-width:560px;
+}
+.section-intro>p:last-child{
+  max-width:430px;
+  color:var(--muted);
+}
+.steps{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:48px;
+  margin-top:52px;
+}
+.steps article{
+  border-top:1px solid var(--ink);
+  padding-top:24px;
+}
+.step-number{
+  font-size:11px;
+  letter-spacing:1.5px;
+  color:var(--orange);
+  font-weight:700;
+}
+.steps p{
+  font-size:15px;
+  color:var(--muted);
+}
+.example{
+  display:block;
+  margin-top:24px;
+  font-size:12px;
+  padding-top:18px;
+  border-top:1px solid var(--line);
+  font-weight:600;
+}
+.demo-invite{
+  background:var(--ink);
+  color:var(--white);
+  border-radius:10px;
+  padding:55px;
+  display:grid;
+  grid-template-columns:1.2fr 1fr;
+  gap:70px;
+  align-items:center;
+}
+.demo-invite p:not(.eyebrow){
+  max-width:430px;
+  color:#c3d0c5;
+}
+.demo-invite .eyebrow{
+  color:var(--lime);
+}
+.demo-invite .button{
+  margin-top:14px;
+}
+.demo-checklist{
+  list-style:none;
+  margin:0;
+  padding:0;
+}
+.demo-checklist li{
+  padding:22px 0;
+  border-bottom:1px solid #ffffff30;
+  font-size:17px;
+}
+.demo-checklist span{
+  color:var(--lime);
+  margin-right:22px;
+  font-size:12px;
+}
+.field-section{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:100px;
+  align-items:center;
+}
+.field-section p:not(.eyebrow){
+  color:var(--muted);
+}
+.field-notes{
+  border:1px solid var(--line);
+  padding:35px;
+  border-radius:8px;
+}
+.field-notes ul{
+  list-style:none;
+  padding:0;
+  margin-bottom:0;
+}
+.field-notes li{
+  padding:20px 0;
+  border-bottom:1px solid var(--line);
+}
+.field-notes li:last-child{
+  border:0;
+  padding-bottom:0;
+}
+.field-notes strong,.field-notes span{
+  display:block;
+}
+.field-notes li span{
+  font-size:14px;
+  color:var(--muted);
+  margin-top:5px;
+}
+.privacy-section{
+  background:var(--soft);
+  padding-block:64px;
+}
+.privacy-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:100px;
+  align-items:center;
+}
+.privacy-grid>div:last-child{
+  color:var(--muted);
+}
+.final-cta{
+  text-align:center;
+  padding-block:85px;
+}
+.final-cta .actions{
+  justify-content:center;
+}
+.final-cta p:not(.eyebrow){
+  color:var(--muted);
+}
+.site-footer{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:24px;
+  flex-wrap:wrap;
+  padding-block:30px;
+  border-top:1px solid var(--line);
+  font-size:12px;
+}
+.site-footer .wordmark{
+  font-size:18px;
+}
+.site-footer p{
+  color:var(--muted);
+}
+.site-footer nav{
+  gap:22px;
+}
+.site-footer a{
+  font-size:12px;
+}
+/* Browser-only demo */
+.offline-tools {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  padding: 12px 0;
+}
+.offline-tools p {
+  width: 100%;
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+.offline-tools a {
+  font-size: 13px;
+}
+.demo-heading{
+  display:flex;
+  justify-content:space-between;
+  align-items:end;
+  gap:24px;
+  padding-block:42px 25px;
+}
+.demo-heading h1{
+  font-size:46px;
+  letter-spacing:-2px;
+  margin:10px 0;
+}
+.demo-heading p{
+  margin:8px 0;
+  color:var(--muted);
+  max-width:650px;
+}
+.demo-banner{
+  display:flex;
+  gap:12px;
+  align-items:center;
+  background:var(--soft);
+  border:1px solid var(--line);
+  padding:12px 18px;
+  border-radius:6px;
+  font-size:13px;
+}
+.demo-banner strong{
+  white-space:nowrap;
+}
+.demo-shell{
+  display:grid;
+  grid-template-columns:200px 1fr;
+  min-height:630px;
+  background:var(--white);
+  border:1px solid var(--line);
+  border-radius:10px;
+  overflow:hidden;
+  margin-block:20px 28px;
+}
+.demo-sidebar{
+  padding:25px 18px;
+  background:#edf0e6;
+  border-right:1px solid var(--line);
+}
+.demo-sidebar .eyebrow{
+  padding-inline:12px;
+}
+.demo-nav{
+  display:grid;
+  gap:6px;
+  margin-top:25px;
+}
+.demo-nav button{
+  padding:12px;
+  text-align:left;
+  border:0;
+  background:transparent;
+  border-radius:5px;
+  color:var(--ink);
+  font-size:14px;
+}
+.demo-nav button[aria-pressed="true"]{
+  background:var(--ink);
+  color:var(--white);
+}
+.demo-nav button:hover:not([aria-pressed="true"]){
+  background:#dde4d4;
+}
+.sample-account{
+  font-size:12px;
+  padding:25px 12px;
+  color:var(--muted);
+}
+.sample-account strong{
+  display:block;
+  color:var(--ink);
+}
+.demo-content{
+  padding:32px 40px;
+  min-width:0;
+}
+.demo-content h2{
+  font-size:30px;
+  margin-top:0;
+  letter-spacing:-1px;
+}
+.demo-content h3{
+  font-size:18px;
+  margin:0 0 12px;
+}
+.demo-content .intro{
+  font-size:14px;
+  color:var(--muted);
+  margin-top:-10px;
+}
+.guided-step{
+  font-size:13px;
+  border-left:3px solid var(--orange);
+  padding:8px 15px;
+  margin:22px 0;
+  background:var(--paper);
+}
+.form-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:18px;
+  margin-block:25px;
+}
+.form-grid label{
+  display:grid;
+  gap:7px;
+  font-size:13px;
+  font-weight:600;
+}
+.form-grid input,.form-grid select,.form-grid textarea{
+  width:100%;
+  min-width:0;
+  border:1px solid #a7b7a7;
+  border-radius:5px;
+  background:var(--white);
+  color:var(--ink);
+  padding:10px;
+}
+.form-grid .full{
+  grid-column:1/-1;
+}
+.demo-content details{
+  margin-bottom:22px;
+}
+.demo-content summary{
+  cursor:pointer;
+  font-size:14px;
+}
+.feedback{
+  min-height:28px;
+  font-size:14px;
+  font-weight:600;
+  margin-bottom:15px;
+  color:var(--ink);
+}
+.project-card{
+  padding:22px;
+  border:1px solid var(--line);
+  border-radius:7px;
+  margin-top:18px;
+}
+.project-card .project-meta{
+  font-size:12px;
+  color:var(--muted);
+}
+.project-card textarea{
+  display:block;
+  width:100%;
+  resize:vertical;
+  min-height:70px;
+  border:1px solid #a7b7a7;
+  background:var(--paper);
+  padding:12px;
+  border-radius:5px;
+  color:var(--ink);
+  font-size:14px;
+}
+.project-card label{
+  display:block;
+  font-size:12px;
+  font-weight:600;
+  margin-block:12px 6px;
+}
+.project-card select{
+  padding:7px;
+  border:1px solid #a7b7a7;
+  background:var(--white);
+  border-radius:4px;
+  color:var(--ink);
+}
+.project-card .actions{
+  gap:12px;
+  margin-top:18px;
+}
+.project-card .button{
+  padding:10px 15px;
+  font-size:13px;
+}
+.stats-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:16px;
+  margin-block:26px;
+}
+.stat{
+  padding:20px;
+  background:var(--soft);
+  border-radius:5px;
+}
+.stat strong{
+  display:block;
+  font-size:32px;
+  font-weight:600;
+  line-height:1.3;
+}
+.stat span{
+  font-size:12px;
+  color:var(--muted);
+}
+.progress-filter{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  font-size:13px;
+  margin-block:25px;
+}
+.progress-filter select{
+  padding:7px;
+  background:var(--white);
+  color:var(--ink);
+  border:1px solid var(--line);
+  border-radius:4px;
+}
+.pyramid-row{
+  display:grid;
+  grid-template-columns:45px 1fr 65px;
+  gap:12px;
+  align-items:center;
+  margin-block:9px;
+  font-size:13px;
+}
+.pyramid-track{
+  display:flex;
+  justify-content:center;
+}
+.pyramid-bar{
+  height:24px;
+  width:var(--bar-width);
+  min-width:7px;
+  background:#809f77;
+  border-radius:3px;
+}
+.pyramid-row:first-child .pyramid-bar{
+  background:var(--orange);
+}
+.pyramid-row span:last-child{
+  text-align:right;
+  color:var(--muted);
+  font-size:12px;
+}
+.history{
+  list-style:none;
+  padding:0;
+}
+.history li{
+  border-bottom:1px solid var(--line);
+  padding:14px 0;
+  display:flex;
+  justify-content:space-between;
+  gap:15px;
+  font-size:14px;
+}
+.history small{
+  display:block;
+  color:var(--muted);
+  font-size:12px;
+}
+.history .grade{
+  font-weight:700;
+  white-space:nowrap;
+}
+.empty{
+  padding:25px;
+  background:var(--soft);
+  border-radius:5px;
+}
+.demo-bottom{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:24px;
+  flex-wrap:wrap;
+  padding-bottom:45px;
+}
+.demo-bottom p{
+  max-width:640px;
+  color:var(--muted);
+  font-size:14px;
+}
+[hidden]{
+  display:none!important;
+}
+@media(min-width:1000px){
+  .steps p{
+    min-height:100px;
+  }
+}
+@media(max-width:900px){
+  .wrap{
+    width:calc(100% - 40px);
+  }
+  .hero{
+    gap:30px;
+    padding-block:45px;
+  }
+  .hero-visual{
+    padding:40px 20px 20px;
+  }
+  h1{
+    font-size:70px;
+    letter-spacing:-4px;
+  }
+  .preview-card{
+    padding:20px;
+  }
+  .preview-top{
+    flex-wrap:wrap;
+  }
+  .steps{
+    gap:25px;
+  }
+  .field-section,.privacy-grid{
+    gap:40px;
+  }
+  .demo-invite{
+    gap:35px;
+    padding:35px;
+  }
+  .site-header nav{
+    gap:18px;
+  }
+  .demo-content{
+    padding:28px;
+  }
+  .demo-shell{
+    grid-template-columns:170px 1fr;
+  }
+}
+@media(max-width:650px){
+  .site-header{
+    min-height:90px;
+    flex-wrap:wrap;
+    padding-block:20px;
+    gap:16px;
+  }
+  .site-header nav{
+    gap:20px;
+    width:100%;
+    justify-content:space-between;
+  }
+  .site-header nav a{
+    font-size:12px;
+  }
+  .site-header nav .button{
+    padding:7px 11px;
+  }
+  .hero{
+    grid-template-columns:1fr;
+    padding-block:30px 45px;
+  }
+  .hero h1{
+    font-size:76px;
+  }
+  .hero .lead{
+    font-size:17px;
+  }
+  .hero-visual{
+    margin-top:15px;
+    padding:35px 24px 24px;
+  }
+  .preview-top{
+    flex-wrap:nowrap;
+  }
+  .preview-title{
+    font-size:30px;
+  }
+  .discipline-strip .wrap{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+    font-size:10px;
+  }
+  .section{
+    padding-block:55px;
+  }
+  .steps{
+    grid-template-columns:1fr;
+    gap:30px;
+    margin-top:35px;
+  }
+  .steps h3 br{
+    display:none;
+  }
+  .steps h3{
+    font-size:23px;
+  }
+  .steps p{
+    margin-top:12px;
+  }
+  .example{
+    margin-top:16px;
+  }
+  .demo-invite{
+    grid-template-columns:1fr;
+    padding:30px 24px;
+    gap:20px;
+  }
+  .demo-checklist li{
+    font-size:15px;
+    padding-block:17px;
+  }
+  .field-section,.privacy-grid{
+    grid-template-columns:1fr;
+    gap:24px;
+  }
+  .field-notes{
+    padding:25px;
+  }
+  .privacy-section{
+    padding-block:40px;
+  }
+  .final-cta{
+    padding-block:55px;
+  }
+  .site-footer{
+    gap:12px;
+    padding-block:25px;
+  }
+  .site-footer p{
+    margin:0;
+  }
+  .site-footer nav{
+    width:100%;
+    gap:20px;
+  }
+  .demo-heading{
+    align-items:start;
+    padding-top:28px;
+  }
+  .demo-heading h1{
+    font-size:36px;
+  }
+  .demo-heading .button{
+    font-size:12px;
+    padding:9px;
+    white-space:nowrap;
+  }
+  .demo-banner{
+    align-items:start;
+    flex-direction:column;
+    gap:2px;
+  }
+  .demo-shell{
+    display:block;
+  }
+  .demo-sidebar{
+    padding:14px;
+    border-right:0;
+    border-bottom:1px solid var(--line);
+  }
+  .demo-sidebar>.eyebrow,.sample-account{
+    display:none;
+  }
+  .demo-nav{
+    display:flex;
+    flex-wrap:wrap;
+    margin:0;
+    gap:4px;
+  }
+  .demo-nav button{
+    flex:1;
+    padding:9px 7px;
+    text-align:center;
+    font-size:12px;
+    white-space:nowrap;
+  }
+  .demo-content{
+    padding:24px 18px;
+  }
+  .demo-content h2{
+    font-size:25px;
+  }
+  .form-grid{
+    gap:14px;
+    grid-template-columns:1fr;
+  }
+  .form-grid .full{
+    grid-column:auto;
+  }
+  .stats-grid{
+    gap:8px;
+  }
+  .stat{
+    padding:14px 10px;
+  }
+  .stat strong{
+    font-size:25px;
+  }
+  .stat span{
+    font-size:10px;
+  }
+  .project-card{
+    padding:16px;
+  }
+  .project-card .actions{
+    gap:8px;
+  }
+  .project-card .button{
+    font-size:12px;
+    padding:9px;
+  }
+  .demo-bottom{
+    gap:8px;
+  }
+}
+@media(prefers-reduced-motion:reduce){
+  html{
+    scroll-behavior:auto;
+  }
+}
+</style>
+
+
+</head>
+<body>
+  <a class="skip" href="#main">Skip to demo</a>
+  <header class="site-header wrap"><a class="wordmark" href="https://milesjo-cloud-project.github.io/HarnessSync/index.html"><span class="brand-mark" aria-hidden="true">H↗</span> HarnessSync</a><nav aria-label="Main navigation"><a href="https://milesjo-cloud-project.github.io/HarnessSync/index.html">About the project</a><a class="button small" href="https://harnesssync.onrender.com">Open the real app ↗</a></nav></header>
+  <main class="wrap" id="main">
+    <div class="demo-heading"><div><p class="eyebrow">A little hands-on climbing</p><h1>Take a look around.</h1><p>A simplified, interactive walkthrough of logging, projects, and progress.</p></div><button class="button secondary" id="reset-demo" type="button" hidden>Reset demo ↺</button></div>
+    <div class="demo-banner"><strong>Demo mode / Fictional data</strong><span>Changes stay in this page’s memory and reset on reload. Nothing is sent to an account.</span></div>
+    <div class="offline-tools">
+      <p id="offline-status" role="status">This single-file demo works offline. Entries reset on reload. Links to the website and full app need internet.</p>
+
+
+    </div>
+    <noscript><p class="empty">This demo needs JavaScript. You can still <a href="index.html#how-it-works">read how HarnessSync works</a> or <a href="https://harnesssync.onrender.com">open the app</a>.</p></noscript>
+    <div class="demo-shell" id="demo-shell" hidden>
+      <aside class="demo-sidebar"><p class="eyebrow">Your climbing space</p><nav class="demo-nav" aria-label="Demo views"><button type="button" data-view="log" aria-pressed="true" aria-controls="view-log">＋ Log a climb</button><button type="button" data-view="projects" aria-pressed="false" aria-controls="view-projects">↗ Projects <span id="project-count">2</span></button><button type="button" data-view="progress" aria-pressed="false" aria-controls="view-progress">▥ Progress</button><button type="button" data-view="history" aria-pressed="false" aria-controls="view-history">≡ Send history</button></nav><div class="sample-account"><strong>Alex · Sample climber</strong>Just here to explore.</div></aside>
+      <div class="demo-content">
+        <div class="feedback" id="feedback" role="status" aria-live="polite" aria-atomic="true"></div>
+        <section id="view-log" aria-labelledby="log-heading"><h2 id="log-heading" tabindex="-1">Log a climb</h2><p class="intro">A quick record is enough. Add details when you want them.</p><p class="guided-step">Try this: save a V3 flash, then explore your projects.</p>
+          <form id="climb-form"><div class="form-grid"><label>Discipline<select id="discipline" name="discipline"><option>Boulder</option><option>Rope</option></select></label><label>Grade<select id="grade" name="grade"></select></label><label class="full">What happened?<select id="result" name="result"><option>Flash</option><option>Onsight</option><option>Redpoint</option><option>Sent</option><option>Project</option><option>Attempt</option></select></label></div><details><summary>More details (optional)</summary><div class="form-grid"><label>Route or problem name<input id="route" name="route" maxlength="80" placeholder="e.g. The blue slab"></label><label>Gym or crag<input id="location" name="location" maxlength="80" placeholder="e.g. Sample climbing gym"></label></div></details><button class="button" type="submit">Save climb →</button></form>
+        </section>
+        <section id="view-projects" aria-labelledby="projects-heading" hidden><h2 id="projects-heading" tabindex="-1">Your projects</h2><p class="intro">The climbs you keep coming back to.</p><p class="guided-step">Add an attempt, save some beta, then choose a send style and send it.</p><div id="projects-list"></div></section>
+        <section id="view-progress" aria-labelledby="progress-heading" hidden><h2 id="progress-heading" tabindex="-1">See the work adding up.</h2><p class="intro">These numbers update as you log sends and complete projects.</p><div class="stats-grid"><div class="stat"><strong id="total-sends"></strong><span>total sends</span></div><div class="stat"><strong id="best-boulder"></strong><span>best boulder</span></div><div class="stat"><strong id="best-rope"></strong><span>best rope</span></div></div><label class="progress-filter">Send pyramid <select id="pyramid-discipline"><option>Boulder</option><option>Rope</option></select></label><div id="pyramid"></div><p class="fine">Completed sends count toward volume. Projects and attempts don’t count until you send.</p><p class="guided-step">The full app also includes personal goals, session recaps, achievements, and grade progression.</p></section>
+        <section id="view-history" aria-labelledby="history-heading" hidden><h2 id="history-heading" tabindex="-1">Send history</h2><p class="intro">The small wins, all in one place. Most recent entries first.</p><ul class="history" id="send-history"></ul></section>
+      </div>
+    </div>
+    <div class="demo-bottom"><p><strong>Ready for your own climbing story?</strong><br>The full app adds account storage, session timing, goals, achievements, CSV exports, and a connected offline phone logger.</p><a class="button" href="https://harnesssync.onrender.com">Start your own log ↗</a></div>
+  </main>
+  <footer class="site-footer wrap"><a class="wordmark" href="https://milesjo-cloud-project.github.io/HarnessSync/index.html">HarnessSync</a><p>Illustrative demo · No account or device connection</p><nav aria-label="Footer"><a href="https://milesjo-cloud-project.github.io/HarnessSync/support.html">Help &amp; support</a><a href="https://milesjo-cloud-project.github.io/HarnessSync/privacy.html">Privacy</a></nav></footer>
+<script>
+/* Separate simulation: demo entries stay in memory; no account or data sync. */
+(() => {
+  "use strict";
+  const grades = {
+    Boulder: ["VB", ...Array.from({length: 18}, (_, i) => `V${i}`)],
+    Rope: [...Array.from({length: 10}, (_, i) => `5.${i}`),
+      ...Array.from({length: 6}, (_, i) => "abcd".split("").map(letter => `5.${i + 10}${letter}`)).flat()],
+  };
+  const sendStyles = ["Onsight", "Flash", "Redpoint", "Sent"];
+  const $ = id => document.getElementById(id);
+  let sends, projects, nextId;
+
+  function seed() {
+    sends = [];
+    for (const [grade, count] of [["V1", 5], ["V2", 4], ["V3", 2], ["V4", 1]]) {
+      for (let i = 0; i < count; i++) sends.push({discipline: "Boulder", grade, status: i ? "Sent" : "Flash", route: "Sample gym boulder", location: "Sample climbing gym"});
+    }
+    sends.push({discipline: "Rope", grade: "5.10a", status: "Redpoint", route: "The long corner", location: "Sample crag"});
+    projects = [
+      {id: 1, discipline: "Boulder", grade: "V5", route: "The green overhang", location: "Sample climbing gym", attempts: 8, notes: "Left heel before the reach. Keep the right hip close."},
+      {id: 2, discipline: "Rope", grade: "5.10c", route: "The upper corner", location: "Sample crag", attempts: 3, notes: "Pause at the good hold before the crux."},
+    ];
+    nextId = 3;
+  }
+  function element(tag, text, className) {
+    const el = document.createElement(tag);
+    if (text !== undefined) el.textContent = text;
+    if (className) el.className = className;
+    return el;
+  }
+  function announce(message) { $("feedback").textContent = message; }
+  function view(name, focus = true) {
+    document.querySelectorAll("[data-view]").forEach(button => button.setAttribute("aria-pressed", String(button.dataset.view === name)));
+    for (const key of ["log", "projects", "progress", "history"]) $("view-" + key).hidden = key !== name;
+    render();
+    if (focus) $("view-" + name).querySelector("h2").focus({preventScroll: true});
+  }
+  function populateGrades() {
+    const discipline = $("discipline").value;
+    $("grade").replaceChildren(...grades[discipline].map(grade => new Option(grade, grade)));
+    $("grade").value = discipline === "Boulder" ? "V3" : "5.10a";
+  }
+  function button(text, action, secondary = false) {
+    const el = element("button", text, "button" + (secondary ? " secondary" : ""));
+    el.type = "button";
+    el.addEventListener("click", action);
+    return el;
+  }
+  function renderProjects() {
+    $("project-count").textContent = projects.length;
+    $("projects-list").replaceChildren();
+    if (!projects.length) $("projects-list").append(element("p", "All projects sent! Log a climb with Project or Attempt to start another.", "empty"));
+    for (const project of projects) {
+      const card = element("article", undefined, "project-card");
+      card.append(element("h3", `${project.grade} / ${project.route || "Unnamed project"}`));
+      card.append(element("p", `${project.discipline} · ${project.location || "No location"} · ${project.attempts} ${project.attempts === 1 ? "attempt" : "attempts"}`, "project-meta"));
+      const label = element("label", "Beta / notes");
+      label.htmlFor = `notes-${project.id}`;
+      const notes = element("textarea");
+      notes.id = label.htmlFor;
+      notes.value = project.notes;
+      notes.maxLength = 500;
+      // Retain edits when another view is opened before Save notes.
+      notes.addEventListener("input", () => { project.notes = notes.value; });
+      card.append(label, notes);
+      const styleLabel = element("label", "Send style");
+      styleLabel.htmlFor = `style-${project.id}`;
+      const style = element("select");
+      style.id = styleLabel.htmlFor;
+      style.append(...sendStyles.map(value => new Option(value, value)));
+      style.value = project.sendStyle || "Redpoint";
+      style.addEventListener("change", () => { project.sendStyle = style.value; });
+      card.append(styleLabel, style);
+      const actions = element("div", undefined, "actions");
+      actions.append(
+        button("＋ Attempt", () => {
+          project.attempts++;
+          announce(`Attempt added to ${project.route || project.grade}: ${project.attempts} attempts. Keep at it!`);
+          renderProjects();
+          $("projects-list").querySelector(`[data-attempt="${project.id}"]`).focus();
+        }, true),
+        button("Save notes", () => { project.notes = notes.value.trim(); announce("Beta saved for this demo session."); }, true),
+        button("Sent it! ↗", () => {
+          sends.push({...project, status: style.value});
+          projects = projects.filter(item => item.id !== project.id);
+          announce(`${project.grade} sent! Your project is now in send history. See your updated progress below.`);
+          $("pyramid-discipline").value = project.discipline;
+          view("progress");
+        }),
+      );
+      actions.firstChild.dataset.attempt = project.id;
+      card.append(actions);
+      $("projects-list").append(card);
+    }
+  }
+  function best(discipline) {
+    const scale = grades[discipline];
+    const rank = Math.max(-1, ...sends.filter(climb => climb.discipline === discipline).map(climb => scale.indexOf(climb.grade)));
+    return scale[rank] || "—";
+  }
+  function renderProgress() {
+    $("total-sends").textContent = sends.length;
+    $("best-boulder").textContent = best("Boulder");
+    $("best-rope").textContent = best("Rope");
+    const discipline = $("pyramid-discipline").value;
+    const counts = new Map();
+    for (const climb of sends.filter(item => item.discipline === discipline)) counts.set(climb.grade, (counts.get(climb.grade) || 0) + 1);
+    const maximum = Math.max(1, ...counts.values());
+    $("pyramid").replaceChildren();
+    if (!counts.size) $("pyramid").append(element("p", "No sends in this discipline yet.", "empty"));
+    for (const grade of [...grades[discipline]].reverse().filter(value => counts.has(value))) {
+      const count = counts.get(grade);
+      const row = element("div", undefined, "pyramid-row");
+      const track = element("div", undefined, "pyramid-track");
+      const bar = element("div", undefined, "pyramid-bar");
+      bar.style.setProperty("--bar-width", `${count / maximum * 100}%`);
+      track.append(bar);
+      row.append(element("span", grade), track, element("span", `${count} ${count === 1 ? "send" : "sends"}`));
+      $("pyramid").append(row);
+    }
+  }
+  function render() {
+    renderProjects();
+    renderProgress();
+    $("send-history").replaceChildren();
+    for (const climb of [...sends].reverse()) {
+      const row = element("li");
+      const details = element("div", climb.route || "Unnamed climb");
+      details.append(element("small", `${climb.discipline} · ${climb.status} · ${climb.location || "No location"}`));
+      row.append(details, element("span", climb.grade, "grade"));
+      $("send-history").append(row);
+    }
+  }
+  document.querySelectorAll("[data-view]").forEach(button => button.addEventListener("click", () => view(button.dataset.view)));
+  $("discipline").addEventListener("change", populateGrades);
+  $("pyramid-discipline").addEventListener("change", renderProgress);
+  $("climb-form").addEventListener("submit", event => {
+    event.preventDefault();
+    const climb = {discipline: $("discipline").value, grade: $("grade").value, status: $("result").value,
+      route: $("route").value.trim(), location: $("location").value.trim()};
+    if (!grades[climb.discipline]?.includes(climb.grade)) return;
+    $("route").value = "";
+    if (["Project", "Attempt"].includes(climb.status)) {
+      const existing = projects.find(project => project.discipline === climb.discipline && project.grade === climb.grade && project.route.toLowerCase() === climb.route.toLowerCase() && project.location.toLowerCase() === climb.location.toLowerCase());
+      if (existing) existing.attempts++;
+      else projects.push({...climb, id: nextId++, attempts: 1, notes: ""});
+      announce(`${climb.grade} ${existing ? "attempt added" : "added to projects"}. It will count as a send when you complete it.`);
+      view("projects");
+    } else if (sendStyles.includes(climb.status)) {
+      sends.push(climb);
+      $("pyramid-discipline").value = climb.discipline;
+      announce(`${climb.grade} ${climb.status.toLowerCase()} saved! Your send count is now ${sends.length}. Try adding an attempt to a project next.`);
+      view("progress");
+    }
+  });
+  $("reset-demo").addEventListener("click", () => {
+    seed();
+    $("climb-form").reset();
+    populateGrades();
+    $("pyramid-discipline").value = "Boulder";
+    announce("Demo reset. The original fictional climbs and projects are back.");
+    view("log");
+  });
+  seed();
+  populateGrades();
+  render();
+  $("demo-shell").hidden = false;
+  $("reset-demo").hidden = false;
+})();
+</script>
+</body>
+</html>

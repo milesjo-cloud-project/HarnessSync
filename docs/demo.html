@@ -9,6 +9,7 @@
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="showcase.css">
   <script src="demo.js" defer></script>
+  <script src="demo-offline.js" defer></script>
 </head>
 <body>
   <a class="skip" href="#main">Skip to demo</a>
@@ -16,6 +17,11 @@
   <main class="wrap" id="main">
     <div class="demo-heading"><div><p class="eyebrow">A little hands-on climbing</p><h1>Take a look around.</h1><p>A simplified, interactive walkthrough of logging, projects, and progress.</p></div><button class="button secondary" id="reset-demo" type="button" hidden>Reset demo ↺</button></div>
     <div class="demo-banner"><strong>Demo mode / Fictional data</strong><span>Changes stay in this page’s memory and reset on reload. Nothing is sent to an account.</span></div>
+    <div class="offline-tools">
+      <p id="offline-status" role="status">For an offline presentation, download the single-file demo below. The full app needs internet.</p>
+      <a class="text-link" href="downloads/harnesssync-demo-offline.html" download>Download offline demo ↓</a>
+      <a class="text-link" href="downloads/harnesssync-preview.zip" download>Download site &amp; demo ZIP ↓</a>
+    </div>
     <noscript><p class="empty">This demo needs JavaScript. You can still <a href="index.html#how-it-works">read how HarnessSync works</a> or <a href="https://harnesssync.onrender.com">open the app</a>.</p></noscript>
     <div class="demo-shell" id="demo-shell" hidden>
       <aside class="demo-sidebar"><p class="eyebrow">Your climbing space</p><nav class="demo-nav" aria-label="Demo views"><button type="button" data-view="log" aria-pressed="true" aria-controls="view-log">＋ Log a climb</button><button type="button" data-view="projects" aria-pressed="false" aria-controls="view-projects">↗ Projects <span id="project-count">2</span></button><button type="button" data-view="progress" aria-pressed="false" aria-controls="view-progress">▥ Progress</button><button type="button" data-view="history" aria-pressed="false" aria-controls="view-history">≡ Send history</button></nav><div class="sample-account"><strong>Alex · Sample climber</strong>Just here to explore.</div></aside>
