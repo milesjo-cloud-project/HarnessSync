@@ -16,6 +16,31 @@ log boulder or rope climbs, add attempts and beta, graduate projects, and see th
 send history and pyramid update. Reload or **Reset demo** restores the examples.
 It does not connect to accounts, databases, or the offline phone logger.
 
+### Show the owner, including offline
+
+- Share `docs/downloads/harnesssync-preview.zip`. The owner extracts the ZIP and
+  opens `index.html` in a desktop browser to see the site, then **Try the demo**.
+- For just the demo, share `docs/downloads/harnesssync-demo-offline.html`. Open
+  that single file in a desktop browser; no internet, server, or installation is
+  needed. Logging, project attempts, beta notes, sending projects, history, and
+  the pyramid work offline. Entries reset on reload; full-app links need internet.
+- On a phone, use the hosted `demo.html`: open it online and wait for **Demo
+  downloaded for offline use**, bookmark it, then test airplane mode and reload.
+  Browser data clearing/eviction can remove cached files. Some phone attachment
+  viewers don't run JavaScript, so use a desktop browser for downloaded HTML.
+- The draft PR is for code review; its branch is not a hosted preview. After
+  manual merge and successful Pages publication, share the public homepage and
+  `/demo.html` links. Do not send a localhost URL to someone on another device.
+
+The service worker caches only an explicit list of public presentation files;
+it never caches account requests or stores demo entries. Regenerate the downloadable
+HTML, preview ZIP, and versioned service worker after editing presentation files:
+
+```sh
+python scripts/build_demo_downloads.py
+python scripts/build_demo_downloads.py --check
+```
+
 Preview both locally without running Streamlit or loading app secrets:
 
 ```sh

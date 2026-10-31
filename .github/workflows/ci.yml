@@ -48,6 +48,8 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: node tests/offline_browser.cjs python
 
+      - run: node tests/demo_browser.cjs
+
   docker:
     name: Docker build
     runs-on: ubuntu-latest

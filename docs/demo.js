@@ -1,4 +1,4 @@
-/* Separate simulation: no accounts, storage, or network calls. */
+/* Separate simulation: demo entries stay in memory; no account or data sync. */
 (() => {
   "use strict";
   const grades = {
