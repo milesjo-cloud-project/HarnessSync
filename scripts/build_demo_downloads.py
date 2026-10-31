@@ -107,7 +107,9 @@ def build_outputs() -> dict[str, bytes]:
     files[OFFLINE_FILE] = standalone_demo(files)
     worker = service_worker(files)
     archive = io.BytesIO()
-    with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as bundle:
+    # Stored entries avoid zlib-version differences across Python installations.
+    # The public bundle is small; portable byte-for-byte output matters more here.
+    with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_STORED) as bundle:
         for name, content in {**files, "demo-sw.js": worker, "START-HERE.txt": (
             "HarnessSync owner preview — fictional data only\n\n"
             "Unzip the entire folder, then open index.html in a desktop browser for the site.\n"
@@ -119,7 +121,8 @@ def build_outputs() -> dict[str, bytes]:
             "Entries reset on reload. The full app and other external links need internet.\n"
         ).encode("utf-8")}.items():
             info = zipfile.ZipInfo(name, date_time=(2026, 1, 1, 0, 0, 0))
-            info.compress_type = zipfile.ZIP_DEFLATED
+            info.create_system = 3  # Fixed Unix metadata, including on Windows.
+            info.compress_type = zipfile.ZIP_STORED
             info.external_attr = 0o100644 << 16
             bundle.writestr(info, content)
     return {OFFLINE_FILE: files[OFFLINE_FILE], "demo-sw.js": worker, ARCHIVE_FILE: archive.getvalue()}

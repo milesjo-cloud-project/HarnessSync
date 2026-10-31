@@ -1,5 +1,6 @@
 """Offline presentation artifacts contain public source and need no account."""
 import importlib.util
+import hashlib
 import io
 from pathlib import Path
 import zipfile
@@ -49,6 +50,28 @@ def test_share_archive_is_reproducible_and_contains_only_public_allowlist():
         assert archive.read("demo-sw.js") == outputs["demo-sw.js"]
 
 
+def test_archive_bytes_do_not_depend_on_host_os_or_zlib(monkeypatch):
+    expected = builder.build_outputs()[builder.ARCHIVE_FILE]
+    original_info = zipfile.ZipInfo
+
+    class OtherHostZipInfo(original_info):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.create_system = 0  # Emulate the Windows default on every host.
+
+    def without_compression(compress_type, *args, **kwargs):
+        assert compress_type == zipfile.ZIP_STORED, "Portable archives must not depend on a zlib encoder"
+        return None
+
+    monkeypatch.setattr(builder.zipfile, "ZipInfo", OtherHostZipInfo)
+    monkeypatch.setattr(builder.zipfile, "_get_compressor", without_compression)
+    actual = builder.build_outputs()[builder.ARCHIVE_FILE]
+    assert hashlib.sha256(actual).digest() == hashlib.sha256(expected).digest()
+    with zipfile.ZipFile(io.BytesIO(actual)) as archive:
+        assert all(info.create_system == 3 for info in archive.infolist())
+        assert all(info.compress_type == zipfile.ZIP_STORED for info in archive.infolist())
+
+
 def test_cache_version_changes_with_public_files_and_artifacts_are_current():
     original = {"demo.html": b"fictional demo"}
     assert builder.service_worker(original) != builder.service_worker({"demo.html": b"updated demo"})
@@ -56,4 +79,7 @@ def test_cache_version_changes_with_public_files_and_artifacts_are_current():
         current = (builder.DOCS / name).read_bytes()
         if not name.endswith(".zip"):
             current = current.replace(b"\r\n", b"\n")
-        assert current == expected, f"Run python scripts/build_demo_downloads.py: {name} is stale"
+        # Report a concise digest mismatch instead of dumping the entire ZIP in CI.
+        assert hashlib.sha256(current).hexdigest() == hashlib.sha256(expected).hexdigest(), (
+            f"Run python scripts/build_demo_downloads.py: {name} is stale"
+        )
