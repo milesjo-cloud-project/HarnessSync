@@ -8,6 +8,24 @@ across sessions, time your sessions, and see your grade pyramid and progression.
 
 **Gym pilot flyer:** [Open the print-ready flyer](docs/gym-flyer.html) · [QR code](docs/gym-qr.svg)
 
+## Website and interactive demo
+
+The public introduction lives in `docs/index.html`, with a no-sign-in interactive
+walkthrough in `docs/demo.html`. The demo uses fictional data in page memory:
+log boulder or rope climbs, add attempts and beta, graduate projects, and see the
+send history and pyramid update. Reload or **Reset demo** restores the examples.
+It does not connect to accounts, databases, or the offline phone logger.
+
+Preview both locally without running Streamlit or loading app secrets:
+
+```sh
+python -m http.server 8766 --bind 127.0.0.1 --directory docs
+```
+
+Open `http://127.0.0.1:8766/` for the site or `/demo.html` for the demo. The
+walkthrough is a simplified presentation of the app's core flows, not a copy of
+the full Streamlit interface. These files follow the normal manual release gate.
+
 ## Features
 
 - Log climbs with grade (V-scale or YDS), send style, wall angle, hold type and location
