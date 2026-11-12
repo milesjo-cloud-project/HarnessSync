@@ -179,11 +179,15 @@ def render(user_id):
                             flash("success", tr("Climb record updated!"))
                             st.rerun()
                     with btn_col2:
-                        if st.button(tr("🗑️ Delete Climb"), width="stretch", key=f"delete_{k}"):
-                            delete_climb(user_id, target_climb["id"])
-                            leaderboard_changed()
-                            flash("info", tr("Climb record deleted."))
-                            st.rerun()
+                        # A popover, not a bare button: on a phone the columns stack and a
+                        # stray tap would otherwise delete the climb with no way back.
+                        with st.popover(tr("🗑️ Delete Climb"), width="stretch"):
+                            st.caption(tr("This permanently deletes this climb."))
+                            if st.button(tr("Yes, delete it"), width="stretch", type="primary", key=f"delete_{k}"):
+                                delete_climb(user_id, target_climb["id"])
+                                leaderboard_changed()
+                                flash("info", tr("Climb record deleted."))
+                                st.rerun()
 
     with col_right:
         st.write(tr("### 🧗 Grade Progression"))

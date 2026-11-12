@@ -346,5 +346,8 @@
   "Set a send or climbing-day target. Only completed sends count; editing your log updates progress.": "Fija una meta de encadenes o días de escalada. Solo cuentan los encadenes completados; editar el registro actualiza el progreso.",
   "Recaps group climbs by their logged date. Timer minutes are shown separately; climbs do not have exact timestamps.": "Los resúmenes agrupan escaladas por fecha registrada. El tiempo se muestra aparte; las escaladas no tienen hora exacta.",
   "Language changes sync with your account when online.": "El idioma se sincroniza con tu cuenta cuando hay conexión.",
-  "Some reference articles, owner tools and diagnostic messages are currently available in English only. Your own notes and replies are shown as written.": "Algunos artículos, herramientas del propietario y mensajes de diagnóstico solo están en inglés. Las notas y respuestas se muestran tal como se escribieron."
+  "Some reference articles, owner tools and diagnostic messages are currently available in English only. Your own notes and replies are shown as written.": "Algunos artículos, herramientas del propietario y mensajes de diagnóstico solo están en inglés. Las notas y respuestas se muestran tal como se escribieron.",
+  "This permanently deletes this climb.": "Esto elimina esta escalada de forma permanente.",
+  "This permanently deletes this project and its attempts.": "Esto elimina este proyecto y sus intentos de forma permanente.",
+  "Yes, delete it": "Sí, eliminar"
 }

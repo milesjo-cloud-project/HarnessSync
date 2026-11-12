@@ -346,5 +346,8 @@
   "Set a send or climbing-day target. Only completed sends count; editing your log updates progress.": "设定完攀次数或攀岩天数目标。仅统计已完攀记录；编辑日志会更新进度。",
   "Recaps group climbs by their logged date. Timer minutes are shown separately; climbs do not have exact timestamps.": "回顾按记录日期汇总攀爬。计时分钟单独显示；攀爬记录没有精确时间戳。",
   "Language changes sync with your account when online.": "联网时，语言设置会与账号同步。",
-  "Some reference articles, owner tools and diagnostic messages are currently available in English only. Your own notes and replies are shown as written.": "部分参考文章、管理员工具和诊断消息目前仅提供英文。你的笔记和回复按原文显示。"
+  "Some reference articles, owner tools and diagnostic messages are currently available in English only. Your own notes and replies are shown as written.": "部分参考文章、管理员工具和诊断消息目前仅提供英文。你的笔记和回复按原文显示。",
+  "This permanently deletes this climb.": "这条攀爬记录将被永久删除。",
+  "This permanently deletes this project and its attempts.": "该项目及其尝试记录将被永久删除。",
+  "Yes, delete it": "是的，删除"
 }

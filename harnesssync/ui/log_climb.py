@@ -27,9 +27,12 @@ def render(user_id):
                 del st.session_state[key]
         st.session_state["_quick_log_account"] = user_id
     if st.session_state.pop("_quick_log_saved", False):
-        st.session_state["quick_route"] = ""
-        st.session_state["quick_status"] = "Sent"
-        st.session_state["quick_date"] = user_now().date()
+        for key in ("quick_route", "quick_status", "quick_date"):
+            st.session_state.pop(key, None)
+    # Defaults live in Session State only. Passing index=/value= as well makes
+    # Streamlit log a "default value but also set via Session State" warning.
+    st.session_state.setdefault("quick_status", "Sent")
+    st.session_state.setdefault("quick_date", user_now().date())
     discipline = st.segmented_control(
         tr("Discipline"), ["Boulder", "Rope"], default=latest.get("discipline", "Boulder"), key="quick_log_discipline",
         format_func=option_label(),
@@ -48,7 +51,6 @@ def render(user_id):
         status = st.selectbox(
             tr("What happened?"),
             SEND_STATUSES,
-            index=SEND_STATUSES.index("Sent"),
             help=tr("Choose Project or Attempt if you haven't sent it yet."),
             format_func=option_label(),
             key="quick_status",
@@ -58,7 +60,7 @@ def render(user_id):
             location = st.text_input(tr("Gym or crag (optional)"), value=defaults.get("location", ""), max_chars=LOCATION_MAX)
             environment = st.selectbox(tr("Where did you climb?"), ENVIRONMENTS,
                                        index=previous_index(ENVIRONMENTS, "environment"), format_func=option_label())
-            climb_date = st.date_input(tr("Date"), value=user_now().date(), max_value=user_now().date(), key="quick_date")
+            climb_date = st.date_input(tr("Date"), max_value=user_now().date(), key="quick_date")
             angle = st.selectbox(tr("Wall angle"), WALL_ANGLES, index=1, format_func=option_label())
             hold_type = st.selectbox(tr("Hold type"), HOLD_TYPES, index=5, format_func=option_label())
 

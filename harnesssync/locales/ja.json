@@ -346,5 +346,8 @@
   "Set a send or climbing-day target. Only completed sends count; editing your log updates progress.": "完登数や登った日数の目標を設定できます。完登のみを数え、記録の編集に応じて進捗が更新されます。",
   "Recaps group climbs by their logged date. Timer minutes are shown separately; climbs do not have exact timestamps.": "振り返りは記録日ごとにまとめます。タイマーの分数は別表示で、各クライミングの正確な時刻は記録されていません。",
   "Language changes sync with your account when online.": "オンライン時に言語設定をアカウントと同期します。",
-  "Some reference articles, owner tools and diagnostic messages are currently available in English only. Your own notes and replies are shown as written.": "一部の参考記事、管理者向けツール、診断メッセージは現在英語のみです。メモや返信は入力された言語で表示します。"
+  "Some reference articles, owner tools and diagnostic messages are currently available in English only. Your own notes and replies are shown as written.": "一部の参考記事、管理者向けツール、診断メッセージは現在英語のみです。メモや返信は入力された言語で表示します。",
+  "This permanently deletes this climb.": "この記録は完全に削除されます。",
+  "This permanently deletes this project and its attempts.": "このプロジェクトと試行回数は完全に削除されます。",
+  "Yes, delete it": "はい、削除します"
 }

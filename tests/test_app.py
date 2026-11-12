@@ -235,6 +235,29 @@ class TestApp(unittest.TestCase):
         for label in ["🏆 Leaderboard", "📱 Phone App", "💬 Help & report a problem", "📖 Guide & Reference"]:
             self._tab(at, label)
 
+    def test_deleting_a_project_or_climb_needs_a_confirming_tap(self):
+        self._run()  # creates the dev profile
+        profile_manager.log_climb(USER, "Boulder", "V3", "Sent", "2026-09-01")
+        profile_manager.log_project(USER, "Boulder", "V6", "2026-09-20", route_name="Crux")
+        project_id = profile_manager.get_projects(USER)[0]["id"]
+        climb_id = profile_manager.get_climbs(USER)[0]["id"]
+
+        at = self._tab(self._run(), "🎯 Projects")
+        labels = [b.label for b in at.button]
+        # A single stray tap near "Add Attempt" can't delete: only the confirm button does.
+        self.assertNotIn("🗑️ Delete", labels)
+        self.assertEqual(at.button(key=f"del_proj_{project_id}").label, "Yes, delete it")
+        at.button(key=f"del_proj_{project_id}").click()
+        at = self._run(at)
+        self.assertEqual(profile_manager.get_projects(USER), [])
+
+        at = self._tab(at, "📊 Progress")
+        self.assertNotIn("🗑️ Delete Climb", [b.label for b in at.button])
+        self.assertEqual(at.button(key=f"delete_{climb_id}").label, "Yes, delete it")
+        at.button(key=f"delete_{climb_id}").click()
+        self._run(at)
+        self.assertEqual(profile_manager.get_climbs(USER), [])
+
     def test_feature_crash_is_recorded_and_other_tabs_still_work(self):
         sent = []
         with mock.patch("harnesssync.notifications.send_email", side_effect=lambda **kw: sent.append(kw) or True), mock.patch("harnesssync.notifications.is_configured", return_value=True), mock.patch("harnesssync.ui.guide.render", side_effect=RuntimeError("secret boom")):

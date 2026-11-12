@@ -134,8 +134,12 @@ def render(user_id):
                         add_project_attempt(user_id, proj["id"])
                         st.rerun()
                 with b_col3:
-                    if st.button(tr("🗑️ Delete"), key=f"del_proj_{proj['id']}", width="stretch"):
-                        delete_project(user_id, proj["id"])
-                        flash("info", tr("Project deleted."))
-                        st.rerun()
+                    # Sits right under "Add Attempt" once the columns stack on a phone,
+                    # so it asks first instead of deleting on a single stray tap.
+                    with st.popover(tr("🗑️ Delete"), width="stretch"):
+                        st.caption(tr("This permanently deletes this project and its attempts."))
+                        if st.button(tr("Yes, delete it"), key=f"del_proj_{proj['id']}", width="stretch", type="primary"):
+                            delete_project(user_id, proj["id"])
+                            flash("info", tr("Project deleted."))
+                            st.rerun()
                 st.markdown("---")

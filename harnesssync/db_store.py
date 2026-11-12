@@ -15,6 +15,7 @@ or via the DATABASE_URL environment variable. With neither set, data goes to
 climber_profiles/harnesssync.db.
 """
 
+import logging
 import os
 from contextlib import contextmanager
 
@@ -186,6 +187,9 @@ password_accounts = sa.Table(
 
 _engine = None
 
+# Set by hosts whose disk is wiped on redeploy (Render, and Streamlit Community Cloud).
+HOSTED_ENV_MARKERS = ("RENDER", "STREAMLIT_SHARING_MODE")
+
 
 def _database_url():
     try:
@@ -196,6 +200,13 @@ def _database_url():
     url = url or os.environ.get("DATABASE_URL")
     if url:
         return url
+    if any(os.environ.get(name) for name in HOSTED_ENV_MARKERS):
+        # Hosted containers lose their disk on every redeploy or restart, so
+        # this fallback silently throws away every climber's log. Say so loudly.
+        logging.getLogger(__name__).warning(
+            "No DATABASE_URL or [database] url is set, so HarnessSync is using a local "
+            "SQLite file. On a hosted service it is erased on every redeploy or restart."
+        )
     os.makedirs(PROFILES_DIR, exist_ok=True)
     return f"sqlite:///{DEFAULT_SQLITE_PATH}"
 
