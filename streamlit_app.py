@@ -9,7 +9,7 @@ from harnesssync.ui.common import auth_configured, dev_mode, email_is_verified, 
 from harnesssync.support_config import HELP_URL
 from harnesssync.ui.landing_redirect import send_new_visitors_to_landing
 
-st.set_page_config(page_title="HarnessSync | Climbing Intel", layout="wide")
+st.set_page_config(page_title="HarnessSync", page_icon="🧗", layout="wide")
 
 
 # ----------------- IDENTITY -----------------

@@ -1,0 +1,20 @@
+# Matches the HarnessSync website (docs/showcase.css), so climbers who scan the
+# gym flyer land in an app that looks like the site they came from.
+# Secrets live in secrets.toml, never here.
+
+[theme]
+base = "light"
+primaryColor = "#173e36"
+backgroundColor = "#f5f3eb"
+secondaryBackgroundColor = "#e9eddf"
+textColor = "#173e36"
+linkColor = "#173e36"
+borderColor = "#d6dcd1"
+baseRadius = "medium"
+
+[client]
+# Hide the developer menu (rerun, settings, record a screencast) from climbers.
+toolbarMode = "minimal"
+
+[browser]
+gatherUsageStats = false

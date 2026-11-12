@@ -235,6 +235,13 @@ class TestApp(unittest.TestCase):
         for label in ["🏆 Leaderboard", "📱 Phone App", "💬 Help & report a problem", "📖 Guide & Reference"]:
             self._tab(at, label)
 
+    def test_new_climber_progress_shows_one_next_step_not_empty_charts(self):
+        at = self._tab(self._run(), "📊 Progress")
+        self.assertEqual(len(at.get("vega_lite_chart")), 0)
+        self.assertEqual([i.value for i in at.info],
+                         ["No climbs logged yet. Use the Log a climb tab to log your first one."])
+        self.assertEqual(next(m.value for m in at.metric if m.label == "Total Climbs Logged"), "0")
+
     def test_deleting_a_project_or_climb_needs_a_confirming_tap(self):
         self._run()  # creates the dev profile
         profile_manager.log_climb(USER, "Boulder", "V3", "Sent", "2026-09-01")

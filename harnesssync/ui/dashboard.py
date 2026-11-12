@@ -41,15 +41,19 @@ def render(user_id):
         render_achievements(climbs, user_now().date())
         return
     st.write(tr("### 📊 Climb Overview"))
-    m_col1, m_col2, m_col3, m_col4 = st.columns(4)
-    with m_col1:
-        st.metric(label=tr("Total Climbs Logged"), value=len(climbs))
-    with m_col2:
-        st.metric(label=tr("Best Boulder Send"), value=boulder_best["grade"] if boulder_best else "—")
-    with m_col3:
-        st.metric(label=tr("Best Rope Send"), value=rope_best["grade"] if rope_best else "—")
-    with m_col4:
-        st.metric(label=tr("Logged Today"), value=sum(1 for c in climbs if c["date"] == today_str))
+    # A wrapping row instead of st.columns(4): columns stack one per line on a
+    # phone, which turned four small numbers into a full screen of scrolling.
+    with st.container(horizontal=True, gap="medium"):
+        st.metric(label=tr("Total Climbs Logged"), value=len(climbs), width=150)
+        st.metric(label=tr("Best Boulder Send"), value=boulder_best["grade"] if boulder_best else "—", width=150)
+        st.metric(label=tr("Best Rope Send"), value=rope_best["grade"] if rope_best else "—", width=150)
+        st.metric(label=tr("Logged Today"), value=sum(1 for c in climbs if c["date"] == today_str), width=150)
+
+    if not climbs:
+        # One clear next step for a brand-new climber, instead of three empty
+        # charts each repeating "log a climb first".
+        st.info(tr("No climbs logged yet. Use the Log a climb tab to log your first one."))
+        return
 
     st.markdown("---")
 
@@ -74,7 +78,7 @@ def render(user_id):
             pyramid_chart = alt.Chart(grade_counts).mark_bar().encode(
                 x=alt.X("Sends:Q", title=tr("Total Sends")),
                 y=alt.Y("grade:N", title=tr("Grade"), sort=hardest_first),
-                color=alt.Color("Sends:Q", scale=alt.Scale(scheme="blues")),
+                color=alt.Color("Sends:Q", scale=alt.Scale(scheme="greens"), legend=None),
                 tooltip=["grade", "Sends"]
             ).properties(height=300)
 
@@ -205,7 +209,9 @@ def render(user_id):
                 y=alt.Y("Rank:Q", title=tr("Difficulty Rank")),
                 color=alt.Color("discipline:N", title=tr("Discipline"), scale=alt.Scale(scheme="category10")),
                 tooltip=["date", "discipline", "grade", "status", "route_name", "environment"],
-            ).properties(height=360).interactive()
+            # Not .interactive(): on a phone, pan/zoom grabs the swipe meant to
+            # scroll the page, so climbers got stuck inside the chart.
+            ).properties(height=360)
 
             st.altair_chart(progression_chart, width="stretch")
             st.caption(tr("💡 Higher = harder within that discipline's own scale (V-scale or YDS)."))
