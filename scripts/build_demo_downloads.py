@@ -19,7 +19,7 @@ DOCS = ROOT / "docs"
 PUBLIC_FILES = (
     "index.html", "demo.html", "showcase.css", "demo.js", "demo-offline.js",
     "icon.svg", "privacy.html", "support.html", "style.css", "theme.js",
-    "gym-flyer.html", "gym-qr.svg",
+    "gym-flyer.html", "gym-qr.svg", "landing.css",
 )
 OFFLINE_FILE = "downloads/harnesssync-demo-offline.html"
 ARCHIVE_FILE = "downloads/harnesssync-preview.zip"

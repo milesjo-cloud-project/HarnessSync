@@ -3,61 +3,202 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>HarnessSync — Every climb adds up.</title>
-  <meta name="description" content="A free climbing log for boulderers and rope climbers. Remember your sends, work your projects, and see your progress. Try the demo without signing in.">
+  <title>HarnessSync — Count the almosts.</title>
+  <meta name="description" content="A free climbing log that counts every try, not just sends: how many, how high you got, and how much closer each session takes you. Try the demo without signing in.">
   <meta name="theme-color" content="#f5f3eb">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="showcase.css">
+  <link rel="stylesheet" href="landing.css">
 </head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
   <header class="site-header wrap">
-    <a class="wordmark" href="index.html"><span class="brand-mark" aria-hidden="true">H↗</span> HarnessSync</a>
-    <nav aria-label="Main navigation"><a href="#how-it-works">How it works</a><a href="demo.html">Try the demo</a><a class="button small" href="https://harnesssync.onrender.com">Open the app ↗</a></nav>
+    <a class="wordmark" href="index.html"><span class="logo-mark" aria-hidden="true"><span>H</span></span>HarnessSync</a>
+    <nav aria-label="Main navigation">
+      <a class="hide-sm" href="#how-it-works">How it works</a>
+      <a class="hide-sm" href="#for-gyms">For gyms</a>
+      <a class="hide-sm" href="demo.html">Demo</a>
+      <a class="button small" href="https://harnesssync.onrender.com">Open my log ↗</a>
+    </nav>
   </header>
+
   <main id="main">
     <section class="hero wrap">
-      <div class="hero-copy">
-        <p class="eyebrow"><span class="dot"></span> A climbing log for your next session</p>
-        <h1>Every climb<br>adds <em>up.</em></h1>
-        <p class="lead">The warm-ups. The almosts. The one you finally sent. Keep your climbing story in one place, and see the progress you might otherwise miss.</p>
-        <div class="actions"><a class="button" href="demo.html">Try the interactive demo →</a><a class="text-link" href="https://harnesssync.onrender.com">Start your own log ↗</a></div>
-        <p class="fine">Free to use · Bouldering &amp; rope · Demo needs no account</p>
-      </div>
-      <div class="hero-visual" aria-label="Illustrative climbing log with fictional sample data">
-        <div class="contour" aria-hidden="true"></div>
-        <div class="preview-card">
-          <div class="preview-top"><span class="eyebrow">Your climbing, in view</span><span class="sample-label">Sample data</span></div>
-          <div class="preview-title">Small steps.<br>Stronger sessions.</div>
-          <div class="mini-stats"><div><strong>12</strong><span>boulder sends</span></div><div><strong>V4</strong><span>best boulder</span></div><div><strong>2</strong><span>projects</span></div></div>
-          <div class="mini-pyramid" aria-label="Example pyramid: V4 one, V3 two, V2 four, V1 five sends">
-            <div><span>V4</span><i style="--w:20%"></i><b>1</b></div><div><span>V3</span><i style="--w:40%"></i><b>2</b></div><div><span>V2</span><i style="--w:80%"></i><b>4</b></div><div><span>V1</span><i style="--w:100%"></i><b>5</b></div>
-          </div>
-          <div class="preview-project"><span class="route-dot"></span><div><strong>The green overhang</strong><small>V5 project · 8 attempts · One move closer</small></div><span aria-hidden="true">↗</span></div>
+      <div>
+        <p class="eyebrow">Bouldering &amp; rope · free · works offline</p>
+        <h1>Count the<br><span class="tape">almosts.</span></h1>
+        <p class="lead">Other apps count sends. <b>HarnessSync counts every try</b>: how many, how high you got, and how much closer each session takes you. Log it in a couple of taps at the wall.</p>
+        <div class="actions">
+          <a class="button" href="https://harnesssync.onrender.com">Log a climb ↗</a>
+          <a class="button ghost" href="demo.html">Try the demo →</a>
         </div>
-        <p class="visual-caption">Remember the effort behind the send.</p>
+        <p class="fine">No download · Private by default · Six languages</p>
+      </div>
+
+      <div class="tag" style="--grade:var(--g-yellow)" aria-label="Example project card with fictional sample data">
+        <span class="hole" aria-hidden="true"></span>
+        <span class="sample">Sample</span>
+        <div class="tag-row">
+          <div>
+            <span class="meta">PROJECT · CAVE WALL</span>
+            <div class="tag-name">The green overhang</div>
+          </div>
+          <div class="grade">V5</div>
+        </div>
+        <div class="rule"></div>
+        <div class="label">Tries</div>
+        <div class="tally">
+          <svg viewBox="0 0 34 28" aria-hidden="true"><line x1="4" y1="2" x2="4" y2="26"/><line x1="12" y1="2" x2="12" y2="26"/><line x1="20" y1="2" x2="20" y2="26"/><line x1="28" y1="2" x2="28" y2="26"/><line x1="1" y1="22" x2="31" y2="5"/></svg>
+          <svg viewBox="0 0 26 28" aria-hidden="true"><line x1="4" y1="2" x2="4" y2="26"/><line x1="12" y1="2" x2="12" y2="26"/><line x1="20" y1="2" x2="20" y2="26"/></svg>
+          <span class="meta">8 tries over 3 sessions</span>
+        </div>
+        <div class="ladder" aria-label="Best high point each session: halfway, then past the crux, then the last move">
+          <span>Session 1</span><div class="bar"><i style="width:50%"></i></div><span>Halfway</span>
+          <span>Session 2</span><div class="bar"><i style="width:75%"></i></div><span>Crux</span>
+          <span>Session 3</span><div class="bar"><i style="width:95%"></i></div><span>Last move</span>
+        </div>
+        <p class="meta note">BEST HIGH POINT: LAST MOVE · "LEFT HEEL BEFORE THE REACH"</p>
       </div>
     </section>
-    <div class="discipline-strip"><div class="wrap"><span>Built around how you climb</span><span>BOULDER / V-SCALE</span><span>ROPE / YDS</span><span>GYM &amp; CRAG</span></div></div>
+
+    <section class="wrap diffs" aria-label="What makes HarnessSync different">
+      <div><h2>Tries are data</h2><p>Every try on a project is saved with how high you got, so a climb you haven't sent yet still shows progress.</p></div>
+      <div><h2>Made for the wall</h2><p>Big tap buttons for the grade and what happened. No dropdowns, no typing, chalky thumbs welcome.</p></div>
+      <div><h2>Zero setup for gyms</h2><p>No routes to enter and no setter work. One flyer at the desk and climbers start logging.</p></div>
+    </section>
+
     <section class="section wrap" id="how-it-works">
-      <div class="section-intro"><p class="eyebrow">From first try to finally</p><h2>Less to remember.<br>More to build on.</h2><p>You don’t need a personal best every session to make progress. HarnessSync keeps the everyday work visible.</p></div>
-      <div class="steps">
-        <article><span class="step-number">01 / LOG</span><h3>A few taps. <br>A session remembered.</h3><p>Choose boulder or rope, the grade, and what happened. Add the route, gym or crag, wall angle, and holds when they’re useful.</p><span class="example">Boulder · V3 · Flash ✓</span></article>
-        <article><span class="step-number">02 / PROJECT</span><h3>Keep the beta. <br>Come back ready.</h3><p>Count attempts and save notes across sessions. When it comes together, graduate your project into your send history.</p><span class="example">“Left heel before the reach.”</span></article>
-        <article><span class="step-number">03 / PROGRESS</span><h3>See the work <br>adding up.</h3><p>Explore your send pyramid and grade progression. Set personal goals, revisit session recaps, and recognize your milestones.</p><span class="example">Your volume. Your goals. Your pace.</span></article>
+      <div class="section-head">
+        <p class="eyebrow">From first try to finally</p>
+        <h2>Two taps. Then climb.</h2>
+        <p>HarnessSync works in your phone browser. Open it at the gym, log the climb, and get back on the wall.</p>
+      </div>
+      <ol class="steps">
+        <li>
+          <span class="eyebrow">01 / Log</span>
+          <h3>Tap what happened</h3>
+          <p>Onsight, flash, redpoint or sent. Not yet? Pick Project or Attempt. Then tap the grade.</p>
+          <div class="chips" aria-hidden="true"><span class="chip on">Flash</span><span class="chip">Sent</span><span class="chip">Attempt</span></div>
+        </li>
+        <li>
+          <span class="eyebrow">02 / Try</span>
+          <h3>Say how high you got</h3>
+          <p>First moves, halfway, past the crux or the last move. Each try is kept, so your projects show the work.</p>
+          <div class="chips" aria-hidden="true"><span class="chip">Halfway</span><span class="chip on">Past the crux</span><span class="chip">Last move</span></div>
+        </li>
+        <li>
+          <span class="eyebrow">03 / Send</span>
+          <h3>Watch it add up</h3>
+          <p>When it goes, move the project to your sends. See your grade pyramid, progression, goals and session recaps.</p>
+          <div class="chips" aria-hidden="true"><span class="chip grade-chip" style="--c:var(--g-green)">V2</span><span class="chip grade-chip" style="--c:var(--g-blue)">V3</span><span class="chip grade-chip on" style="--c:var(--g-yellow)">V4</span><span class="chip grade-chip" style="--c:var(--g-pink)">V5</span></div>
+        </li>
+      </ol>
+    </section>
+
+    <section class="band" id="for-gyms">
+      <div class="section wrap">
+        <div class="section-head">
+          <p class="eyebrow">For climbing gyms</p>
+          <h2>Give your climbers a reason to log</h2>
+          <p>Put one flyer at the desk. Its QR code opens HarnessSync on the Log screen with your gym's name on it. Each month you get a one-page report on how your walls are being climbed.</p>
+        </div>
+        <div class="gyms">
+          <div class="flyer">
+            <span class="eyebrow">At your gym</span>
+            <h3>Count your <span class="tape">almosts.</span></h3>
+            <div class="qr"><img src="gym-qr.svg" alt="Sample QR code" width="150" height="150"></div>
+            <ul>
+              <li>Scan, then log a first climb in seconds</li>
+              <li>Counts every try, not just sends</li>
+              <li>Free and private. No app store.</li>
+            </ul>
+            <p class="fine">Each gym gets its own flyer and link</p>
+          </div>
+
+          <div class="report" aria-label="Example monthly gym report with fictional sample data">
+            <div class="report-head">
+              <h3>October wall report</h3>
+              <span class="meta">SAMPLE · ANONYMOUS TOTALS</span>
+            </div>
+            <div class="kpis">
+              <div class="kpi"><b>46</b><span>climbers logging</span></div>
+              <div class="kpi"><b>1,940</b><span>climbs logged</span></div>
+              <div class="kpi"><b>32%</b><span>send rate</span></div>
+              <div class="kpi"><b>V3</b><span>most tried, not sent</span></div>
+            </div>
+            <div>
+              <div class="label">Climbs logged by day</div>
+              <div class="days" aria-hidden="true"><i style="height:58%"></i><i style="height:80%"></i><i style="height:46%"></i><i style="height:92%"></i><i style="height:40%"></i><i style="height:72%"></i><i style="height:30%"></i></div>
+              <div class="days-x" aria-hidden="true"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>
+            </div>
+            <p class="callout">See which grades your members are stuck on and which days are busiest. Only climbers who choose to join your gym are counted, and the report never shows names, notes or single climbs.</p>
+          </div>
+        </div>
+        <div class="gym-points">
+          <div><h3>No setup</h3><p>No route database to keep up. Climbers log the grade and the try; you get the totals.</p></div>
+          <div><h3>Opt-in only</h3><p>Scanning the flyer never signs anyone up. Climbers tap to be counted, and can stop any time.</p></div>
+          <div><h3>Small groups stay hidden</h3><p>With fewer than three climbers in a month, the report holds back its numbers, so no one stands out.</p></div>
+        </div>
+        <p class="gym-cta"><a class="button lime" href="gym-flyer.html">See the gym flyer →</a></p>
       </div>
     </section>
-    <section class="demo-invite wrap">
-      <div><p class="eyebrow">Take it for a climb</p><h2>Meet your next session.<br>No sign-in needed.</h2><p>Log a fictional climb, add an attempt, then send a project and watch the sample progress update.</p><a class="button lime" href="demo.html">Explore the demo →</a><p><a href="downloads/harnesssync-preview.zip" download>Download the site &amp; demo for a presentation ↓</a></p></div>
-      <ol class="demo-checklist"><li><span>01</span> Log a V3 flash</li><li><span>02</span> Add an attempt to a project</li><li><span>03</span> Send it. See what changes.</li></ol>
+
+    <section class="section wrap split">
+      <div>
+        <p class="eyebrow">At the gym. Out at the crag.</p>
+        <h2>Your log goes where you climb</h2>
+      </div>
+      <div class="body">
+        <p>The app works in your phone browser, with nothing to install. For days without a signal, connect the separate phone logger while you're online and wait for it to confirm the download.</p>
+        <p>It saves climbs and tries on your device. Keep the logger open, or reopen it once you're back online, and it syncs.</p>
+        <ul class="list" style="margin-top:24px">
+          <li><strong>A timer for your sessions</strong><span>Track time at the gym or crag.</span></li>
+          <li><strong>Six languages</strong><span>English, Spanish, French, Japanese, Korean and Simplified Chinese.</span></li>
+          <li><strong>Help when something goes wrong</strong><span>Private problem reports, status updates and owner replies.</span></li>
+        </ul>
+      </div>
     </section>
-    <section class="section wrap field-section">
-      <div><p class="eyebrow">At the gym. Out at the crag.</p><h2>Your log goes<br>where you climb.</h2><p>The main app works in your phone browser. For days without a signal, connect the separate phone logger while online and wait for its download confirmation.</p><p>It saves climbs and attempts on your device. Keep the logger open, or reopen it when you’re online, to sync.</p><p class="fine">The offline logger is available now. A native iPhone / Android app is on the waitlist.</p></div>
-      <div class="field-notes"><span class="eyebrow">A little more in your corner</span><ul><li><strong>A timer for your sessions</strong><span>Keep track of time at the gym or crag.</span></li><li><strong>Six languages for core flows</strong><span>English, Spanish, French, Japanese, Korean, and Simplified Chinese.</span></li><li><strong>Help when something goes wrong</strong><span>Private problem reports, status updates, and owner replies.</span></li></ul></div>
+
+    <section class="wrap">
+      <div class="demo">
+        <div>
+          <p class="eyebrow">Take it for a climb</p>
+          <h2>Try it. No sign-in.</h2>
+          <p>Log a fictional climb, add a try to a project, then send it and watch the sample progress change.</p>
+          <div class="actions"><a class="button lime" href="demo.html">Explore the demo →</a></div>
+          <p class="download"><a href="downloads/harnesssync-preview.zip" download>Download the site &amp; demo for a presentation ↓</a></p>
+        </div>
+        <ol>
+          <li><span>01</span>Log a V3 flash</li>
+          <li><span>02</span>Add a try to a project</li>
+          <li><span>03</span>Send it. See what changes.</li>
+        </ol>
+      </div>
     </section>
-    <section class="privacy-section"><div class="wrap privacy-grid"><div><p class="eyebrow">Your climbing. Your choice.</p><h2>A personal log,<br>with you in control.</h2></div><div><p>Your climbs, projects, and sessions are private to your account. Join the leaderboard only if you want to: it shows your display name, best grade, and send count.</p><p>Export your records as CSV, or delete your account data from the app.</p><a class="text-link" href="privacy.html">Read the privacy policy →</a></div></div></section>
-    <section class="final-cta wrap"><p class="eyebrow">An independent climbing project</p><h2>Start with your next climb.</h2><p>A free place to remember what you’ve done and what you’re working toward.</p><div class="actions"><a class="button" href="https://harnesssync.onrender.com">Open HarnessSync ↗</a><a class="text-link" href="demo.html">Try it first →</a></div></section>
+
+    <section class="section wrap split">
+      <div>
+        <p class="eyebrow">Your climbing. Your choice.</p>
+        <h2>A personal log, with you in control</h2>
+      </div>
+      <div class="body">
+        <p>Your climbs, projects and sessions are private to your account. Join the leaderboard only if you want to: it shows your display name, best grade and send count.</p>
+        <p>Export your records as CSV, or delete your account data from the app.</p>
+        <p style="margin-top:16px"><a class="text-link" href="privacy.html">Read the privacy policy →</a></p>
+      </div>
+    </section>
+
+    <section class="final wrap">
+      <p class="eyebrow">An independent climbing project</p>
+      <h2>Start with your next try.</h2>
+      <p>A free place to remember what you've done and what you're working toward.</p>
+      <div class="actions"><a class="button" href="https://harnesssync.onrender.com">Open HarnessSync ↗</a><a class="button ghost" href="demo.html">Try it first →</a></div>
+    </section>
   </main>
-  <footer class="site-footer wrap"><a class="wordmark" href="index.html">HarnessSync</a><p>A climbing log. A project in progress.</p><nav aria-label="Footer"><a href="support.html">Help &amp; support</a><a href="privacy.html">Privacy</a><a href="gym-flyer.html">Gym flyer</a></nav></footer>
+
+  <footer class="site-footer wrap">
+    <a class="wordmark" href="index.html">HarnessSync</a>
+    <p>A climbing log. A project in progress.</p>
+    <nav aria-label="Footer"><a href="support.html">Help &amp; support</a><a href="privacy.html">Privacy</a><a href="gym-flyer.html">Gym flyer</a></nav>
+  </footer>
 </body>
 </html>
