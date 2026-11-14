@@ -7,7 +7,7 @@ import streamlit as st
 from harnesssync.ui.language import option_label, tr
 import pandas as pd
 
-from harnesssync.grades import GRADES_BY_DISCIPLINE, ENVIRONMENTS, WALL_ANGLES, HOLD_TYPES, SENT_STATUSES
+from harnesssync.grades import GRADES_BY_DISCIPLINE, ENVIRONMENTS, HIGH_POINTS, WALL_ANGLES, HOLD_TYPES, SENT_STATUSES
 from harnesssync.profile_manager import (
     log_project, get_projects, update_project, add_project_attempt, delete_project, graduate_project,
     ROUTE_MAX, LOCATION_MAX, NOTES_MAX,
@@ -70,6 +70,11 @@ def render(user_id):
                     st.write(f"**{tr('Holds')}:** {tr(proj['hold_type'])}")
                 with p_col3:
                     st.write(f"**{tr('Attempts')}:** {proj['attempts']}")
+                    if proj.get("best_high_point"):
+                        st.write(f"**{tr('Best high point')}:** {tr(proj['best_high_point'])}")
+                        # One step per noted try, last 10: shows the almosts adding up.
+                        steps = proj["high_points"][-10:]
+                        st.caption(" → ".join(tr(h) for h in steps))
                     st.write(f"**{tr('Added')}:** {proj['date']}")
                 with p_col4:
                     if proj["notes"]:
@@ -130,8 +135,12 @@ def render(user_id):
                             flash("success", tr("🏆 New {discipline} personal best: {grade}!", discipline=tr(proj['discipline']), grade=proj['grade']))
                         st.rerun()
                 with b_col2:
+                    high_point = st.pills(tr("How high did you get?"), HIGH_POINTS, key=f"att_hp_{proj['id']}",
+                                          format_func=option_label())
                     if st.button(tr("➕ Add Attempt (+1)"), key=f"att_{proj['id']}", width="stretch"):
-                        add_project_attempt(user_id, proj["id"])
+                        add_project_attempt(user_id, proj["id"], high_point=high_point or "",
+                                            try_date=user_now().date().isoformat())
+                        st.session_state.pop(f"att_hp_{proj['id']}", None)
                         st.rerun()
                 with b_col3:
                     # Sits right under "Add Attempt" once the columns stack on a phone,

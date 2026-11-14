@@ -203,6 +203,17 @@ gym_members = sa.Table(
     sa.Column("joined_on", sa.String(10), nullable=False),  # YYYY-MM-DD
 )
 
+# One row per try on a project, with how high it got. projects.attempts stays
+# the total (it also counts tries typed in as a number); this keeps the detail.
+project_tries = sa.Table(
+    "project_tries", metadata,
+    sa.Column("id", sa.Integer, primary_key=True, autoincrement=True),
+    sa.Column("user_id", sa.String(320), nullable=False, index=True),
+    sa.Column("project_id", sa.Integer, nullable=False, index=True),
+    sa.Column("date", sa.String(10), nullable=False),
+    sa.Column("high_point", sa.String(20), nullable=False, server_default=""),
+)
+
 _engine = None
 
 # Set by hosts whose disk is wiped on redeploy (Render, and Streamlit Community Cloud).

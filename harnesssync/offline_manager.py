@@ -17,7 +17,7 @@ from harnesssync.grades import (
     GRADES_BY_DISCIPLINE, SEND_STATUSES, PROJECT_STATUSES, ENVIRONMENTS,
     WALL_ANGLES, HOLD_TYPES,
 )
-from harnesssync.profile_manager import _log_climb, _log_project, ROUTE_MAX, LOCATION_MAX, NOTES_MAX
+from harnesssync.profile_manager import _log_climb, _log_project_with_id, _record_try, ROUTE_MAX, LOCATION_MAX, NOTES_MAX
 
 
 class DeviceUnauthorized(ValueError):
@@ -116,7 +116,8 @@ def synchronize(token, operations, language=None):
             if claimed.rowcount:
                 kwargs = {k: v for k, v in entry.items() if k not in {"date", "status"}}
                 if entry["status"] in PROJECT_STATUSES:
-                    _log_project(conn, user_id, project_date=entry["date"], **kwargs)
+                    _, project_id = _log_project_with_id(conn, user_id, project_date=entry["date"], **kwargs)
+                    _record_try(conn, user_id, project_id, entry["date"], "")
                 else:
                     _log_climb(conn, user_id, status=entry["status"], climb_date=entry["date"], **kwargs)
             else:

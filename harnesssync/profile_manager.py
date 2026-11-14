@@ -10,9 +10,10 @@ from datetime import datetime, timedelta, timezone
 
 import sqlalchemy as sa
 
-from harnesssync.grades import grade_rank, SENT_STATUSES, GRADES_BY_DISCIPLINE
+from harnesssync.grades import grade_rank, SENT_STATUSES, GRADES_BY_DISCIPLINE, HIGH_POINTS
 from harnesssync.db_store import (get_db, rows, profiles, climbs, projects, sessions,
-                                 feedback, waitlist, support_locks, notification_outbox, offline_devices, offline_receipts, password_accounts)
+                                 feedback, waitlist, support_locks, notification_outbox, offline_devices, offline_receipts, password_accounts,
+                                 project_tries)
 
 DISPLAY_NAME_MAX = 30
 ROUTE_MAX = 80
@@ -80,7 +81,7 @@ def save_profile(user_id, display_name, show_on_leaderboard=False):
 def delete_account(user_id):
     """Permanently removes the profile and every row belonging to it."""
     with get_db() as conn:
-        for table in (climbs, projects, sessions, feedback, waitlist, support_locks, notification_outbox, offline_devices, offline_receipts, password_accounts):
+        for table in (climbs, projects, project_tries, sessions, feedback, waitlist, support_locks, notification_outbox, offline_devices, offline_receipts, password_accounts):
             conn.execute(table.delete().where(table.c.user_id == user_id))
         from harnesssync.db_store import goals, gym_members
         conn.execute(goals.delete().where(goals.c.user_id == user_id))
@@ -204,19 +205,41 @@ def delete_climb(user_id, climb_id):
 
 # ----------------- PROJECTS -----------------
 def log_project(user_id, discipline, grade, project_date, route_name="", location="",
-                environment="Gym", angle="Vertical", hold_type="Mixed", attempts=1, notes=""):
+                environment="Gym", angle="Vertical", hold_type="Mixed", attempts=1, notes="",
+                high_point=None):
     """Adds a project. If the climber already has a project with the same
     discipline, grade and route name, adds the attempts to it instead of
     creating a duplicate. Unnamed projects match on location instead, so
     logging "V5 attempt at the gym" twice doesn't make two projects.
+    Passing high_point (one of HIGH_POINTS, or "" if not noted) also saves
+    this as one try, so every try and how high it got is kept.
     Returns "added" or "bumped"."""
     with get_db() as conn:
-        return _log_project(conn, user_id, discipline, grade, project_date, route_name,
-                            location, environment, angle, hold_type, attempts, notes)
+        result, project_id = _log_project_with_id(conn, user_id, discipline, grade, project_date, route_name,
+                                                  location, environment, angle, hold_type, attempts, notes)
+        if high_point is not None:
+            _record_try(conn, user_id, project_id, project_date, high_point)
+        return result
 
 
-def _log_project(conn, user_id, discipline, grade, project_date, route_name="", location="",
-                 environment="Gym", angle="Vertical", hold_type="Mixed", attempts=1, notes=""):
+def _check_high_point(high_point):
+    high_point = high_point or ""
+    if high_point and high_point not in HIGH_POINTS:
+        raise ValueError("Unknown high point.")
+    return high_point
+
+
+def _record_try(conn, user_id, project_id, try_date, high_point):
+    conn.execute(project_tries.insert().values(
+        user_id=user_id, project_id=project_id, date=try_date, high_point=_check_high_point(high_point)))
+
+
+def _log_project(conn, *args, **kwargs):
+    return _log_project_with_id(conn, *args, **kwargs)[0]
+
+
+def _log_project_with_id(conn, user_id, discipline, grade, project_date, route_name="", location="",
+                         environment="Gym", angle="Vertical", hold_type="Mixed", attempts=1, notes=""):
     route_name = _clean(route_name, ROUTE_MAX)
     location = _clean(location, LOCATION_MAX)
     same_project = [
@@ -233,14 +256,14 @@ def _log_project(conn, user_id, discipline, grade, project_date, route_name="", 
             projects.update().where(projects.c.id == existing.id)
             .values(attempts=projects.c.attempts + attempts)
         )
-        return "bumped"
-    conn.execute(projects.insert().values(
+        return "bumped", existing.id
+    inserted = conn.execute(projects.insert().values(
         user_id=user_id, date=project_date, discipline=discipline, grade=grade,
         route_name=route_name, location=location,
         environment=environment, angle=angle, hold_type=hold_type,
         attempts=attempts, notes=(notes or "").strip()[:NOTES_MAX],
     ))
-    return "added"
+    return "added", inserted.inserted_primary_key[0]
 
 
 def get_projects(user_id):
@@ -249,7 +272,20 @@ def get_projects(user_id):
         return []
     query = sa.select(projects).where(projects.c.user_id == user_id).order_by(projects.c.id.desc())
     with get_db() as conn:
-        return rows(conn.execute(query))
+        found = rows(conn.execute(query))
+        tries = rows(conn.execute(
+            sa.select(project_tries.c.project_id, project_tries.c.high_point)
+            .where(project_tries.c.user_id == user_id).order_by(project_tries.c.id)))
+    by_project = {}
+    for t in tries:
+        by_project.setdefault(t["project_id"], []).append(t["high_point"])
+    for p in found:
+        points = by_project.get(p["id"], [])
+        noted = [h for h in points if h in HIGH_POINTS]
+        p["tries_logged"] = len(points)
+        p["high_points"] = noted
+        p["best_high_point"] = max(noted, key=HIGH_POINTS.index) if noted else ""
+    return found
 
 
 def update_project(user_id, project_id, discipline, grade, project_date, route_name="", location="",
@@ -267,18 +303,25 @@ def update_project(user_id, project_id, discipline, grade, project_date, route_n
         )
 
 
-def add_project_attempt(user_id, project_id):
+def add_project_attempt(user_id, project_id, high_point=None, try_date=None):
+    """Adds one try. With high_point (or "" if not noted) the try itself is
+    saved too, dated try_date (default today, UTC)."""
     with get_db() as conn:
-        conn.execute(
+        updated = conn.execute(
             projects.update()
             .where(projects.c.id == project_id, projects.c.user_id == user_id)
             .values(attempts=projects.c.attempts + 1)
         )
+        if updated.rowcount and high_point is not None:
+            try_date = try_date or datetime.now(timezone.utc).date().isoformat()
+            _record_try(conn, user_id, project_id, try_date, high_point)
 
 
 def delete_project(user_id, project_id):
     with get_db() as conn:
         conn.execute(projects.delete().where(projects.c.id == project_id, projects.c.user_id == user_id))
+        conn.execute(project_tries.delete().where(
+            project_tries.c.project_id == project_id, project_tries.c.user_id == user_id))
 
 
 def graduate_project(user_id, project_id, send_date, send_status="Redpoint"):
@@ -293,6 +336,8 @@ def graduate_project(user_id, project_id, send_date, send_status="Redpoint"):
         if not found:
             return []
         p = found[0]
+        conn.execute(project_tries.delete().where(
+            project_tries.c.project_id == p["id"], project_tries.c.user_id == user_id))
         previous_best_rank = _best_send_rank(conn, user_id, p["discipline"])
         # Claim and insert in one transaction: retries cannot duplicate a send,
         # and a failed insert restores the project.

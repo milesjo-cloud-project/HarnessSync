@@ -55,15 +55,25 @@ class TestApp(unittest.TestCase):
     def _button(self, at, label):
         return next(b for b in at.button if b.label == label)
 
+    MORE = ["🏆 Leaderboard", "📱 Phone App", "💬 Help & report a problem", "📖 Guide & Reference"]
+
     def _tab(self, at, label, allow_error=False):
+        """Opens a main tab, or a section under More, by its label in any language."""
+        from harnesssync.i18n import LANGUAGES, translate
+        for section in self.MORE:
+            for code in LANGUAGES:
+                if label == translate(section, code):
+                    at.session_state["main_tabs"] = translate("☰ More", code)
+                    at.session_state["more_section"] = section
+                    return self._run(at, allow_error=allow_error)
         at.session_state["main_tabs"] = label
         return self._run(at, allow_error=allow_error)
 
     def test_page_renders(self):
         at = self._run()
         self.assertEqual(
-            [t.label for t in at.tabs][:7],
-            ["🧗 Log a climb", "📊 Progress", "🎯 Projects", "🏆 Leaderboard", "📱 Phone App", "💬 Help & report a problem", "📖 Guide & Reference"],
+            [t.label for t in at.tabs][:4],
+            ["🧗 Log a climb", "🎯 Projects", "📊 Progress", "☰ More"],
         )
         at = self._tab(at, "💬 Help & report a problem")
         self.assertNotIn("Ask the support assistant", [e.label for e in at.expander])
@@ -181,12 +191,12 @@ class TestApp(unittest.TestCase):
 
     def test_quick_log_reuses_grade_and_location_without_reusing_route(self):
         at = self._run()
-        at.selectbox(key="quick_grade_Boulder").set_value("V4")
+        at.pills(key="quick_grade_Boulder").set_value("V4")
         next(w for w in at.text_input if w.label == "Gym or crag (optional)").set_value("Imaginary gym")
         next(w for w in at.text_input if w.label == "Route or problem name (optional)").set_value("One route")
         self._button(at, "Save climb").click()
         at = self._run(at)
-        self.assertEqual(at.selectbox(key="quick_grade_Boulder").value, "V4")
+        self.assertEqual(at.pills(key="quick_grade_Boulder").value, "V4")
         self.assertEqual(next(w.value for w in at.text_input if w.label == "Gym or crag (optional)"), "Imaginary gym")
         self.assertEqual(next(w.value for w in at.text_input if w.label == "Route or problem name (optional)"), "")
         self._button(at, "Save climb").click()
@@ -196,7 +206,7 @@ class TestApp(unittest.TestCase):
         self.assertEqual([c["route_name"] for c in records], ["", "One route"])
         next(w for w in at.text_input if w.label == "Climber Name").set_value("Other")
         at = self._run(at)
-        self.assertEqual(at.selectbox(key="quick_grade_Boulder").value, "VB")
+        self.assertEqual(at.pills(key="quick_grade_Boulder").value, "VB")
         self.assertEqual(next(w.value for w in at.text_input if w.label == "Gym or crag (optional)"), "")
 
 
@@ -365,8 +375,82 @@ class TestApp(unittest.TestCase):
         self.assertEqual([e.value for e in owner.exception], [])
         self.assertIn("Fewer than 3 climbers", " ".join(i.value for i in owner.info))
         self.assertTrue(any("wall report" in w.value for w in owner.text_area if w.label == "Email text to paste"))
+        self.assertIn("https://harnesssync.onrender.com/?gym=the-test-wall", [c.value for c in owner.code])
         at = self._tab(self._run(), "💬 Help & report a problem")
         self.assertFalse(any(e.label == "Owner gym wall reports" for e in at.expander))
+
+    def _pilot_gym(self, name="Basalt Bouldering"):
+        from harnesssync import gym_report
+        with mock.patch("harnesssync.support_config.settings", return_value={"owner_emails": ["owner@example.com"]}):
+            return gym_report.add_gym("owner@example.com", name)
+
+    def test_flyer_link_opens_log_with_the_gym_and_asks_before_joining(self):
+        from harnesssync import gym_report
+        slug = self._pilot_gym()
+        at = AppTest.from_file(APP_PATH, default_timeout=30)
+        at.secrets["auth"], at.secrets["email"], at.secrets["support"] = {}, {}, {}
+        at.query_params["gym"] = slug
+        at = self._run(at)
+        self.assertEqual(at.tabs[0].label, "🧗 Log a climb")
+        self.assertTrue(any("Climbing at Basalt Bouldering today?" in m.value for m in at.markdown))
+        # Scanning alone never opts anyone in.
+        self.assertIsNone(gym_report.get_membership(USER))
+        self.assertEqual(next(w.value for w in at.text_input if w.label == "Gym or crag (optional)"), "Basalt Bouldering")
+        self._button(at, "Count my climbs for Basalt Bouldering").click()
+        at = self._run(at)
+        self.assertEqual(gym_report.get_membership(USER)["gym_slug"], slug)
+        self.assertTrue(any("Your gym climbs count" in s.value for s in at.success))
+
+    def test_sign_in_screen_names_the_flyer_gym(self):
+        self._pilot_gym("Rock & Roll Gym")
+        at = AppTest.from_string("from harnesssync.ui.gym_reports import render_sign_in_banner\nrender_sign_in_banner()",
+                                 default_timeout=30)
+        at.query_params["gym"] = "rock-roll-gym"
+        at.run()
+        self.assertEqual([i.value for i in at.info],
+                         ["Welcome, Rock & Roll Gym climbers! Sign in or create an account to start logging."])
+
+    def test_flyer_link_can_be_dismissed_and_ignores_unknown_gyms(self):
+        from harnesssync import gym_report
+        slug = self._pilot_gym()
+        at = AppTest.from_file(APP_PATH, default_timeout=30)
+        at.secrets["auth"], at.secrets["email"], at.secrets["support"] = {}, {}, {}
+        at.query_params["gym"] = slug
+        at = self._run(at)
+        self._button(at, "Not now").click()
+        at = self._run(at)
+        self.assertFalse(any(b.label == "Not now" for b in at.button))
+        self.assertIsNone(gym_report.get_membership(USER))
+        other = AppTest.from_file(APP_PATH, default_timeout=30)
+        other.secrets["auth"], other.secrets["email"], other.secrets["support"] = {}, {}, {}
+        other.query_params["gym"] = "no-such-gym"
+        other = self._run(other)
+        self.assertFalse(any(b.label == "Not now" for b in other.button))
+
+    def test_logging_a_try_saves_how_high_it_got(self):
+        at = self._run()
+        at.pills(key="quick_status").set_value("Attempt")
+        at = self._run(at)
+        at.pills(key="quick_grade_Boulder").set_value("V5")
+        at.pills(key="quick_high_point").set_value("Past the crux")
+        self._button(at, "Save climb").click()
+        at = self._run(at)
+        project = profile_manager.get_projects(USER)[0]
+        self.assertEqual((project["grade"], project["attempts"]), ("V5", 1))
+        self.assertEqual(project["best_high_point"], "Past the crux")
+        self.assertEqual(profile_manager.get_climbs(USER), [])
+        # Sends don't ask how high you got.
+        at.pills(key="quick_status").set_value("Flash")
+        at = self._run(at)
+        self.assertFalse(any(p.key == "quick_high_point" for p in at.pills))
+
+        at = self._tab(at, "🎯 Projects")
+        at.pills(key=f"att_hp_{project['id']}").set_value("Last move")
+        self._button(at, "➕ Add Attempt (+1)").click()
+        at = self._run(at)
+        project = profile_manager.get_projects(USER)[0]
+        self.assertEqual((project["attempts"], project["best_high_point"]), (2, "Last move"))
+        self.assertIn("Past the crux → Last move", [c.value for c in at.caption])
 
 
 if __name__ == "__main__":

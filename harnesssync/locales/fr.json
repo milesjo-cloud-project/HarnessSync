@@ -356,5 +356,21 @@
   "Your gym sees anonymous totals only, never your name, notes or single climbs. Only gym climbs you log after joining count.": "Ta salle ne voit que des totaux anonymes, jamais ton nom, tes notes ni tes voies une par une. Seules les voies en salle notées après ton inscription comptent.",
   "Save gym": "Enregistrer la salle",
   "You're counted in {gym}'s monthly report.": "Tu es compté·e dans le bilan mensuel de {gym}.",
-  "You're not in any gym's report.": "Tu ne figures dans le bilan d'aucune salle."
+  "You're not in any gym's report.": "Tu ne figures dans le bilan d'aucune salle.",
+  "Welcome, {gym} climbers! Sign in or create an account to start logging.": "Bienvenue aux grimpeurs de {gym} ! Connectez-vous ou créez un compte pour commencer à noter vos voies.",
+  "Climbing at {gym}. Your gym climbs count in its monthly report.": "Vous grimpez à {gym}. Vos grimpes en salle comptent dans son rapport mensuel.",
+  "Climbing at {gym} today?": "Vous grimpez à {gym} aujourd'hui ?",
+  "Switch my report to {gym}": "Passer mon rapport à {gym}",
+  "Count my climbs for {gym}": "Compter mes grimpes pour {gym}",
+  "Not now": "Pas maintenant",
+  "Tap what happened to log a climb.": "Touchez ce qui s'est passé pour noter une grimpe.",
+  "How high did you get?": "Jusqu'où êtes-vous monté ?",
+  "Tap a grade first.": "Touchez d'abord une cotation.",
+  "Best high point": "Point le plus haut",
+  "First moves": "Premiers mouvements",
+  "Halfway": "À mi-hauteur",
+  "Past the crux": "Après le crux",
+  "Last move": "Dernier mouvement",
+  "More": "Plus",
+  "Section": "Section"
 }

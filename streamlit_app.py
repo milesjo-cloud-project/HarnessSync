@@ -4,7 +4,7 @@ from harnesssync.ui.language import tr
 from harnesssync.ui.language import current_language, render_language_selector, english_notice
 
 from harnesssync.profile_manager import get_profile, save_profile, set_language, display_name_taken, DISPLAY_NAME_MAX
-from harnesssync.ui import dashboard, feedback, guide, leaderboard, log_climb, phone_app, projects, sidebar
+from harnesssync.ui import dashboard, feedback, guide, gym_reports, leaderboard, log_climb, phone_app, projects, sidebar
 from harnesssync.ui.common import auth_configured, dev_mode, email_is_verified, render_safely, show_flash, password_auth_enabled
 from harnesssync.support_config import HELP_URL
 from harnesssync.ui.landing_redirect import send_new_visitors_to_landing
@@ -25,6 +25,7 @@ def resolve_user():
             render_language_selector()
             st.title("🧗 HarnessSync")
             st.subheader(tr("A simple log for every gym session"))
+            render_safely("Gym", gym_reports.render_sign_in_banner)
             st.write(
                 tr("Record a climb in a few taps, keep track of projects, and see your progress "
                 "over time. Your climbing log is private to you.")
@@ -104,14 +105,30 @@ def render_page():
     st.title("🧗 HarnessSync")
     st.subheader(tr("Log a climb. See your progress."))
 
-    sections = [
-        ("🧗 Log a climb", "Log a climb", log_climb.render, (user_id,)),
-        ("📊 Progress", "Progress", dashboard.render, (user_id,)),
-        ("🎯 Projects", "Projects", projects.render, (user_id,)),
+    # Four tabs fit a phone screen without scrolling. The everyday three come
+    # first; everything else sits under More.
+    more_sections = [
         ("🏆 Leaderboard", "Leaderboard", leaderboard.render, ()),
         ("📱 Phone App", "Phone App", phone_app.render, (user_id,)),
         ("💬 Help & report a problem", "Help", feedback.render, (user_id, display_name)),
         ("📖 Guide & Reference", "Guide", guide.render, ()),
+    ]
+
+    def render_more():
+        labels = [s[0] for s in more_sections]
+        choice = st.segmented_control(tr("Section"), labels, default=labels[0], key="more_section",
+                                      format_func=tr, label_visibility="collapsed")
+        for label, area, render, args in more_sections:
+            if label == (choice or labels[0]):
+                if area in {"Guide", "Help"}:
+                    english_notice()
+                render_safely(area, render, *args)
+
+    sections = [
+        ("🧗 Log a climb", "Log a climb", log_climb.render, (user_id,)),
+        ("🎯 Projects", "Projects", projects.render, (user_id,)),
+        ("📊 Progress", "Progress", dashboard.render, (user_id,)),
+        ("☰ More", "More", render_more, ()),
     ]
     labels = [tr(s[0]) for s in sections]
     previous_labels = st.session_state.get("_main_tab_labels", labels)
@@ -123,8 +140,6 @@ def render_page():
     for tab, (_, area, render, args) in zip(tabs, sections):
         if tab.open:
             with tab:
-                if area in {"Guide", "Help"}:
-                    english_notice()
                 render_safely(area, render, *args)
 
 

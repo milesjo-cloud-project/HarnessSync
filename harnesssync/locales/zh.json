@@ -356,5 +356,21 @@
   "Your gym sees anonymous totals only, never your name, notes or single climbs. Only gym climbs you log after joining count.": "攀岩馆只能看到匿名汇总，看不到你的名字、备注或单条记录。只统计你加入后记录的馆内攀爬。",
   "Save gym": "保存攀岩馆",
   "You're counted in {gym}'s monthly report.": "你已计入{gym}的月度报告。",
-  "You're not in any gym's report.": "你不在任何攀岩馆的报告中。"
+  "You're not in any gym's report.": "你不在任何攀岩馆的报告中。",
+  "Welcome, {gym} climbers! Sign in or create an account to start logging.": "欢迎 {gym} 的攀岩者!登录或创建账户即可开始记录。",
+  "Climbing at {gym}. Your gym climbs count in its monthly report.": "正在 {gym} 攀岩。你的岩馆攀爬会计入其月度报告。",
+  "Climbing at {gym} today?": "今天在 {gym} 攀岩吗?",
+  "Switch my report to {gym}": "将我的报告切换到 {gym}",
+  "Count my climbs for {gym}": "把我的攀爬计入 {gym}",
+  "Not now": "以后再说",
+  "Tap what happened to log a climb.": "点选结果来记录一次攀爬。",
+  "How high did you get?": "你爬到了多高?",
+  "Tap a grade first.": "请先点选难度。",
+  "Best high point": "最高点",
+  "First moves": "起步几手",
+  "Halfway": "一半",
+  "Past the crux": "过了难点",
+  "Last move": "最后一手",
+  "More": "更多",
+  "Section": "分区"
 }

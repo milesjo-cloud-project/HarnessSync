@@ -84,9 +84,9 @@ the full Streamlit interface. These files follow the normal manual release gate.
 - Private support tickets, status and owner replies, crash references, and retryable email alerts
 - Owner-reviewed repair briefs for Codex Cloud, with manual PR review and publishing
 - Offline phone web app: device storage for climbs/attempts, downloaded projects and progress,
-  and automatic duplicate-safe sync when the page is open again (📱 Phone App tab).
+  and automatic duplicate-safe sync when the page is open again (☰ More → 📱 Phone App).
 - Export and restore unsynced offline backups on the same account; no idle sync polling.
-- Waitlist for a native iPhone / Android app (📱 Phone App tab)
+- Waitlist for a native iPhone / Android app (☰ More → 📱 Phone App)
 
 ## Run it locally
 

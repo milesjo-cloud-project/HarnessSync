@@ -356,5 +356,21 @@
   "Your gym sees anonymous totals only, never your name, notes or single climbs. Only gym climbs you log after joining count.": "ジムに見えるのは匿名の合計だけで、名前やメモ、個々の登りは見えません。参加後に記録したジムでの登りだけが数えられます。",
   "Save gym": "ジムを保存",
   "You're counted in {gym}'s monthly report.": "{gym}の月次レポートに含まれるようになりました。",
-  "You're not in any gym's report.": "どのジムのレポートにも含まれていません。"
+  "You're not in any gym's report.": "どのジムのレポートにも含まれていません。",
+  "Welcome, {gym} climbers! Sign in or create an account to start logging.": "{gym}のクライマーの皆さん、ようこそ!サインインするかアカウントを作成して記録を始めましょう。",
+  "Climbing at {gym}. Your gym climbs count in its monthly report.": "{gym}で登っています。ジムでの登りは月間レポートに含まれます。",
+  "Climbing at {gym} today?": "今日は{gym}で登りますか?",
+  "Switch my report to {gym}": "レポートを{gym}に切り替える",
+  "Count my climbs for {gym}": "{gym}の集計に含める",
+  "Not now": "今はしない",
+  "Tap what happened to log a climb.": "結果をタップして記録します。",
+  "How high did you get?": "どこまで登れましたか?",
+  "Tap a grade first.": "先にグレードをタップしてください。",
+  "Best high point": "最高到達点",
+  "First moves": "最初の数手",
+  "Halfway": "中間",
+  "Past the crux": "核心の先",
+  "Last move": "最後の一手",
+  "More": "その他",
+  "Section": "セクション"
 }

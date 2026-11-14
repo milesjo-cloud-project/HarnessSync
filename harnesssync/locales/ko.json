@@ -356,5 +356,21 @@
   "Your gym sees anonymous totals only, never your name, notes or single climbs. Only gym climbs you log after joining count.": "암장에는 익명 합계만 보이며, 이름이나 메모, 개별 등반은 보이지 않습니다. 가입한 뒤 기록한 암장 등반만 집계됩니다.",
   "Save gym": "암장 저장",
   "You're counted in {gym}'s monthly report.": "{gym} 월간 리포트에 포함됩니다.",
-  "You're not in any gym's report.": "어느 암장 리포트에도 포함되지 않습니다."
+  "You're not in any gym's report.": "어느 암장 리포트에도 포함되지 않습니다.",
+  "Welcome, {gym} climbers! Sign in or create an account to start logging.": "{gym} 클라이머 여러분, 환영합니다! 로그인하거나 계정을 만들어 기록을 시작하세요.",
+  "Climbing at {gym}. Your gym climbs count in its monthly report.": "{gym}에서 등반 중입니다. 짐 등반이 월간 리포트에 포함됩니다.",
+  "Climbing at {gym} today?": "오늘 {gym}에서 등반하시나요?",
+  "Switch my report to {gym}": "내 리포트를 {gym}(으)로 변경",
+  "Count my climbs for {gym}": "{gym} 집계에 내 등반 포함",
+  "Not now": "나중에",
+  "Tap what happened to log a climb.": "결과를 탭해 등반을 기록하세요.",
+  "How high did you get?": "어디까지 올라갔나요?",
+  "Tap a grade first.": "먼저 그레이드를 탭하세요.",
+  "Best high point": "최고 도달 지점",
+  "First moves": "처음 몇 동작",
+  "Halfway": "중간",
+  "Past the crux": "크럭스 이후",
+  "Last move": "마지막 동작",
+  "More": "더보기",
+  "Section": "섹션"
 }
