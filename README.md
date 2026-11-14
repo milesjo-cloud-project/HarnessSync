@@ -3,8 +3,11 @@
 A free climbing log for boulderers and rope climbers: log sends, track projects
 across sessions, time your sessions, and see your grade pyramid and progression.
 
-**Live app:** <https://harnesssync.onrender.com> ·
-**Home & privacy policy:** <https://milesjo-cloud-project.github.io/HarnessSync/>
+**Start here:** <https://milesjo-cloud-project.github.io/HarnessSync/>. This is the link
+to share. The landing page explains HarnessSync and its buttons open the app.
+
+**App (sign in):** <https://harnesssync.onrender.com> ·
+**Privacy policy:** <https://milesjo-cloud-project.github.io/HarnessSync/privacy.html>
 
 **Gym pilot flyer:** [Open the print-ready flyer](docs/gym-flyer.html) · [QR code](docs/gym-qr.svg)
 
