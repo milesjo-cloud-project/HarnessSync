@@ -7,6 +7,7 @@ from harnesssync.profile_manager import get_profile, save_profile, set_language,
 from harnesssync.ui import dashboard, feedback, guide, leaderboard, log_climb, phone_app, projects, sidebar
 from harnesssync.ui.common import auth_configured, dev_mode, email_is_verified, render_safely, show_flash, password_auth_enabled
 from harnesssync.support_config import HELP_URL
+from harnesssync.ui.landing_redirect import send_new_visitors_to_landing
 
 st.set_page_config(page_title="HarnessSync | Climbing Intel", layout="wide")
 
@@ -20,6 +21,7 @@ def resolve_user():
         return resolve_password_user()
     if auth_configured():
         if not st.user.is_logged_in:
+            send_new_visitors_to_landing()
             render_language_selector()
             st.title("🧗 HarnessSync")
             st.subheader(tr("A simple log for every gym session"))

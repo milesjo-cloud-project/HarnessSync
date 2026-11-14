@@ -121,6 +121,7 @@ def test_password_ui_sign_in_onboarding_logout_and_no_google(mailbox, monkeypatc
     app = AppTest.from_file(str(Path(__file__).resolve().parents[1] / "streamlit_app.py"), default_timeout=30)
     app.secrets["auth"] = {"client_id": "deleted-client"}
     app.secrets["email"] = {}
+    app.query_params["from"] = "site"  # arrived from the landing page's button
     app.run()
     assert not app.exception
     assert not app.tabs
@@ -145,6 +146,7 @@ def test_password_setup_ui_sends_code_and_creates_account(mailbox, monkeypatch):
     app = AppTest.from_file(str(Path(__file__).resolve().parents[1] / "streamlit_app.py"), default_timeout=30)
     app.secrets["auth"] = {}
     app.secrets["email"] = {}
+    app.query_params["from"] = "site"
     app.run()
     next(w for w in app.text_input if w.label == "Account email").set_value("alex@example.com")
     next(b for b in app.button if b.label == "Email verification code").click().run()

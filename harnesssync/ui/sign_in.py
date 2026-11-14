@@ -6,6 +6,7 @@ from harnesssync.ui.language import render_language_selector
 
 from harnesssync import password_auth
 from harnesssync.support_config import HELP_URL
+from harnesssync.ui.landing_redirect import send_new_visitors_to_landing
 
 
 def resolve_user():
@@ -15,6 +16,7 @@ def resolve_user():
         return user_id, ""
     if session:
         st.session_state.clear()
+    send_new_visitors_to_landing()
     render_language_selector()
     st.title("🧗 HarnessSync")
     st.subheader(tr("A simple log for every gym session"))
