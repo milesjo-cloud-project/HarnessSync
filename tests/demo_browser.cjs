@@ -51,8 +51,8 @@ let browser;
   assert.equal(await page.locator("#total-sends").textContent(), "15");
   assert.equal(await page.locator("#best-boulder").textContent(), "V5");
   await page.goto(base); // GitHub Pages subdirectory and directory-index routing.
-  await page.getByRole("heading", {name: "Every climb adds up."}).waitFor();
-  await page.getByRole("link", {name: "Try the interactive demo →", exact: true}).click();
+  await page.getByRole("heading", {name: "Count the almosts."}).waitFor();
+  await page.getByRole("link", {name: "Try the demo →", exact: true}).click();
   await page.getByRole("button", {name: "Reset demo ↺", exact: true}).waitFor();
   await page.getByRole("button", {name: "▥ Progress", exact: true}).click();
   assert.equal(await page.locator("#total-sends").textContent(), "13");
