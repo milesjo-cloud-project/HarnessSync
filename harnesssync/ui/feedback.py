@@ -11,6 +11,7 @@ from harnesssync.db_store import get_db, notification_outbox
 from harnesssync.incidents import owner_incidents
 from harnesssync.support_config import HELP_URL, is_owner
 from harnesssync.support_notifications import deliver_pending
+from harnesssync.ui import gym_reports
 from harnesssync.ui.common import flash, render_safely
 
 
@@ -73,6 +74,8 @@ def render(user_id, display_name):
     if is_owner(user_id):
         with st.expander("Owner support dashboard"):
             render_safely("Owner support", render_owner, user_id)
+        with st.expander("Owner gym wall reports"):
+            render_safely("Gym reports", gym_reports.render_owner, user_id)
 
 
 def render_owner(actor):

@@ -349,5 +349,12 @@
   "Some reference articles, owner tools and diagnostic messages are currently available in English only. Your own notes and replies are shown as written.": "一部の参考記事、管理者向けツール、診断メッセージは現在英語のみです。メモや返信は入力された言語で表示します。",
   "This permanently deletes this climb.": "この記録は完全に削除されます。",
   "This permanently deletes this project and its attempts.": "このプロジェクトと試行回数は完全に削除されます。",
-  "Yes, delete it": "はい、削除します"
+  "Yes, delete it": "はい、削除します",
+  "Your gym": "あなたのジム",
+  "No gym": "ジムなし",
+  "Count my gym climbs in my gym's monthly report": "ジムでの登りをジムの月次レポートに含める",
+  "Your gym sees anonymous totals only, never your name, notes or single climbs. Only gym climbs you log after joining count.": "ジムに見えるのは匿名の合計だけで、名前やメモ、個々の登りは見えません。参加後に記録したジムでの登りだけが数えられます。",
+  "Save gym": "ジムを保存",
+  "You're counted in {gym}'s monthly report.": "{gym}の月次レポートに含まれるようになりました。",
+  "You're not in any gym's report.": "どのジムのレポートにも含まれていません。"
 }

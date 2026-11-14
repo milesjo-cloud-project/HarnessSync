@@ -339,6 +339,35 @@ class TestApp(unittest.TestCase):
         at = self._tab(at, "📊 Progress")
         self.assertEqual(at.selectbox(key=f"edit_status_{climb_id}").options, SENT_STATUSES)
 
+    def test_climber_joins_a_gym_report_from_the_account_menu(self):
+        from harnesssync import gym_report
+        at = self._run()
+        self.assertFalse(any(w.label == "Your gym" for w in at.selectbox))  # no pilot gyms yet
+        with mock.patch("harnesssync.support_config.settings", return_value={"owner_emails": ["owner@example.com"]}):
+            slug = gym_report.add_gym("owner@example.com", "Basalt Bouldering")
+        at = self._run(at)
+        next(w for w in at.selectbox if w.label == "Your gym").set_value(slug)
+        next(w for w in at.checkbox if w.label == "Count my gym climbs in my gym's monthly report").check()
+        self._button(at, "Save gym").click()
+        at = self._run(at)
+        self.assertEqual(gym_report.get_membership(USER)["gym_slug"], slug)
+
+    def test_owner_builds_a_gym_report_and_others_cannot_see_it(self):
+        owner = AppTest.from_string(
+            "from harnesssync.ui.feedback import render\nrender('owner@example.com', 'Owner')",
+            default_timeout=30,
+        )
+        owner.secrets["support"] = {"owner_emails": ["owner@example.com"]}
+        owner.secrets["email"] = {}
+        owner.run()
+        next(w for w in owner.text_input if w.label == "Add a pilot gym").input("The Test Wall")
+        self._button(owner, "Add gym").click().run()
+        self.assertEqual([e.value for e in owner.exception], [])
+        self.assertIn("Fewer than 3 climbers", " ".join(i.value for i in owner.info))
+        self.assertTrue(any("wall report" in w.value for w in owner.text_area if w.label == "Email text to paste"))
+        at = self._tab(self._run(), "💬 Help & report a problem")
+        self.assertFalse(any(e.label == "Owner gym wall reports" for e in at.expander))
+
 
 if __name__ == "__main__":
     unittest.main()

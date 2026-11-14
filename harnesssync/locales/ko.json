@@ -349,5 +349,12 @@
   "Some reference articles, owner tools and diagnostic messages are currently available in English only. Your own notes and replies are shown as written.": "일부 참고 문서, 소유자 도구 및 진단 메시지는 현재 영어로만 제공됩니다. 메모와 답변은 작성한 그대로 표시됩니다.",
   "This permanently deletes this climb.": "이 기록이 영구적으로 삭제됩니다.",
   "This permanently deletes this project and its attempts.": "이 프로젝트와 시도 기록이 영구적으로 삭제됩니다.",
-  "Yes, delete it": "네, 삭제합니다"
+  "Yes, delete it": "네, 삭제합니다",
+  "Your gym": "내 암장",
+  "No gym": "암장 없음",
+  "Count my gym climbs in my gym's monthly report": "내 암장 등반을 암장 월간 리포트에 포함하기",
+  "Your gym sees anonymous totals only, never your name, notes or single climbs. Only gym climbs you log after joining count.": "암장에는 익명 합계만 보이며, 이름이나 메모, 개별 등반은 보이지 않습니다. 가입한 뒤 기록한 암장 등반만 집계됩니다.",
+  "Save gym": "암장 저장",
+  "You're counted in {gym}'s monthly report.": "{gym} 월간 리포트에 포함됩니다.",
+  "You're not in any gym's report.": "어느 암장 리포트에도 포함되지 않습니다."
 }

@@ -185,6 +185,24 @@ password_accounts = sa.Table(
     sa.Column("locked_until", sa.BigInteger, nullable=False, server_default="0"),
 )
 
+# Gyms that run a HarnessSync pilot. Added by the owner only; climbers pick one.
+gyms = sa.Table(
+    "gyms", metadata,
+    sa.Column("slug", sa.String(40), primary_key=True),
+    sa.Column("name", sa.String(80), nullable=False),
+    sa.Column("created_at", sa.String(32), nullable=False),
+)
+
+# A row here is a climber's opt-in: their gym climbs, logged on or after
+# joined_on, count toward that gym's anonymous monthly wall report.
+# One gym per climber. Deleting the row is how a climber opts out.
+gym_members = sa.Table(
+    "gym_members", metadata,
+    sa.Column("user_id", sa.String(320), primary_key=True),
+    sa.Column("gym_slug", sa.String(40), nullable=False, index=True),
+    sa.Column("joined_on", sa.String(10), nullable=False),  # YYYY-MM-DD
+)
+
 _engine = None
 
 # Set by hosts whose disk is wiped on redeploy (Render, and Streamlit Community Cloud).

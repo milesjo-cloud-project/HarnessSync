@@ -349,5 +349,12 @@
   "Some reference articles, owner tools and diagnostic messages are currently available in English only. Your own notes and replies are shown as written.": "部分参考文章、管理员工具和诊断消息目前仅提供英文。你的笔记和回复按原文显示。",
   "This permanently deletes this climb.": "这条攀爬记录将被永久删除。",
   "This permanently deletes this project and its attempts.": "该项目及其尝试记录将被永久删除。",
-  "Yes, delete it": "是的，删除"
+  "Yes, delete it": "是的，删除",
+  "Your gym": "你的攀岩馆",
+  "No gym": "不选攀岩馆",
+  "Count my gym climbs in my gym's monthly report": "把我在馆内的攀爬计入攀岩馆的月度报告",
+  "Your gym sees anonymous totals only, never your name, notes or single climbs. Only gym climbs you log after joining count.": "攀岩馆只能看到匿名汇总，看不到你的名字、备注或单条记录。只统计你加入后记录的馆内攀爬。",
+  "Save gym": "保存攀岩馆",
+  "You're counted in {gym}'s monthly report.": "你已计入{gym}的月度报告。",
+  "You're not in any gym's report.": "你不在任何攀岩馆的报告中。"
 }

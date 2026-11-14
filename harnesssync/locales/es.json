@@ -349,5 +349,12 @@
   "Some reference articles, owner tools and diagnostic messages are currently available in English only. Your own notes and replies are shown as written.": "Algunos artículos, herramientas del propietario y mensajes de diagnóstico solo están en inglés. Las notas y respuestas se muestran tal como se escribieron.",
   "This permanently deletes this climb.": "Esto elimina esta escalada de forma permanente.",
   "This permanently deletes this project and its attempts.": "Esto elimina este proyecto y sus intentos de forma permanente.",
-  "Yes, delete it": "Sí, eliminar"
+  "Yes, delete it": "Sí, eliminar",
+  "Your gym": "Tu gimnasio",
+  "No gym": "Ningún gimnasio",
+  "Count my gym climbs in my gym's monthly report": "Incluir mis escaladas en el informe mensual de mi gimnasio",
+  "Your gym sees anonymous totals only, never your name, notes or single climbs. Only gym climbs you log after joining count.": "Tu gimnasio solo ve totales anónimos, nunca tu nombre, tus notas ni escaladas individuales. Solo cuentan las escaladas en gimnasio que registres después de unirte.",
+  "Save gym": "Guardar gimnasio",
+  "You're counted in {gym}'s monthly report.": "Ahora cuentas en el informe mensual de {gym}.",
+  "You're not in any gym's report.": "No apareces en el informe de ningún gimnasio."
 }

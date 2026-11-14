@@ -82,8 +82,9 @@ def delete_account(user_id):
     with get_db() as conn:
         for table in (climbs, projects, sessions, feedback, waitlist, support_locks, notification_outbox, offline_devices, offline_receipts, password_accounts):
             conn.execute(table.delete().where(table.c.user_id == user_id))
-        from harnesssync.db_store import goals
+        from harnesssync.db_store import goals, gym_members
         conn.execute(goals.delete().where(goals.c.user_id == user_id))
+        conn.execute(gym_members.delete().where(gym_members.c.user_id == user_id))
         conn.execute(profiles.delete().where(profiles.c.user_id == user_id))
 
 
