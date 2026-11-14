@@ -6,7 +6,7 @@ across sessions, time your sessions, and see your grade pyramid and progression.
 **Start here:** <https://milesjo-cloud-project.github.io/HarnessSync/>. This is the link
 to share. The landing page explains HarnessSync and its buttons open the app.
 
-**App (sign in):** <https://harnesssync.onrender.com> ·
+**App (sign in):** <https://harnesssync.onrender.com/?from=site> ·
 **Privacy policy:** <https://milesjo-cloud-project.github.io/HarnessSync/privacy.html>
 
 **Gym pilot flyer:** [Open the print-ready flyer](docs/gym-flyer.html) · [QR code](docs/gym-qr.svg)

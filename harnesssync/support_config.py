@@ -1,6 +1,7 @@
 """Server-owned support settings. No caller-provided roles or addresses."""
 
-HELP_URL = "https://milesjo-cloud-project.github.io/HarnessSync/support.html"
+SITE_URL = "https://milesjo-cloud-project.github.io/HarnessSync/"
+HELP_URL = SITE_URL + "support.html"
 
 
 def settings():
