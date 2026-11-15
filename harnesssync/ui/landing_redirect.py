@@ -38,9 +38,19 @@ _REDIRECT = """<script>
 
 
 def came_from_site():
-    if st.query_params.get(FROM_PARAM) == FROM_SITE:
+    # A gym flyer's QR (?gym=<slug>) is a deliberate way in, and the landing
+    # page would drop the gym, so it counts as having come from the site.
+    if st.query_params.get(FROM_PARAM) == FROM_SITE or _from_gym_flyer():
         st.session_state[_SEEN_KEY] = True
     return bool(st.session_state.get(_SEEN_KEY))
+
+
+def _from_gym_flyer():
+    slug = st.query_params.get("gym")
+    if not slug or len(slug) > 40:
+        return False
+    from harnesssync import gym_report
+    return gym_report.get_gym(slug) is not None
 
 
 def _continue_to_sign_in():
