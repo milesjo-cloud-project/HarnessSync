@@ -43,7 +43,8 @@ const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
   await page.goto(`http://127.0.0.1:${port}/`);
   // Phone App sits under More since the app was cut to four tabs.
   await page.getByRole("tab", {name: "☰ More", exact: true}).click();
-  await page.getByRole("button", {name: "📱 Phone App", exact: true}).click();
+  // Streamlit draws the leading emoji as a separate icon, so match the words.
+  await page.getByRole("button", {name: /Phone App$/}).click();
   await page.getByRole("button", {name: "Connect this device for offline use", exact: true}).click();
   const connection = await page.getByRole("link", {name: "Open offline log on this device", exact: true}).getAttribute("href");
   assert.ok(connection.startsWith(url), "Connection must point at this server’s offline page");
