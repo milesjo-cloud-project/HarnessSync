@@ -427,6 +427,45 @@ class TestApp(unittest.TestCase):
         other = self._run(other)
         self.assertFalse(any(b.label == "Not now" for b in other.button))
 
+    def test_first_climb_in_a_state_earns_its_stamp_and_themes_log(self):
+        at = self._run()
+        self.assertEqual(at.selectbox(key="quick_state").value, "")
+        at.selectbox(key="quick_state").set_value("UT")
+        self._button(at, "Save climb").click()
+        at = self._run(at)
+        self.assertEqual(profile_manager.get_climbs(USER)[0]["state"], "UT")
+        self.assertTrue(any("New state stamp: Utah!" in t.value for t in at.toast))
+        # Log now opens in Utah, with Utah's banner, and a repeat climb isn't a new stamp.
+        self.assertEqual(at.selectbox(key="quick_state").value, "UT")
+        self.assertTrue(any("Climbing in Utah" in h.proto.body for h in at.get("html")))
+        self._button(at, "Save climb").click()
+        at = self._run(at)
+        self.assertFalse(any("New state stamp" in t.value for t in at.toast))
+        at = self._tab(at, "📊 Progress")
+        at.segmented_control(key="progress_view").set_value("Passport")
+        at = self._run(at)
+        self.assertEqual(next(m.value for m in at.metric if m.label == "States stamped"), "1 of 50")
+        self.assertTrue(any("Latest stamp: Utah" in h.proto.body for h in at.get("html")))
+
+    def test_flyer_gym_sets_the_state_for_its_climbers(self):
+        from harnesssync import gym_report
+        slug = self._pilot_gym("Sawtooth Wall")
+        with mock.patch("harnesssync.support_config.settings", return_value={"owner_emails": ["owner@example.com"]}):
+            gym_report.set_gym_state("owner@example.com", slug, "ID")
+        at = AppTest.from_file(APP_PATH, default_timeout=30)
+        at.secrets["auth"], at.secrets["email"], at.secrets["support"] = {}, {}, {}
+        at.query_params["gym"] = slug
+        at = self._run(at)
+        self.assertEqual(at.selectbox(key="quick_state").value, "ID")
+        self.assertTrue(any("Climbing in Idaho" in h.proto.body for h in at.get("html")))
+
+    def test_passport_is_empty_for_a_new_climber(self):
+        at = self._tab(self._run(), "📊 Progress")
+        at.segmented_control(key="progress_view").set_value("Passport")
+        at = self._run(at)
+        self.assertEqual(next(m.value for m in at.metric if m.label == "States stamped"), "0 of 50")
+        self.assertTrue(any("No stamps yet" in i.value for i in at.info))
+
     def test_logging_a_try_saves_how_high_it_got(self):
         at = self._run()
         at.pills(key="quick_status").set_value("Attempt")

@@ -372,5 +372,19 @@
   "Past the crux": "过了难点",
   "Last move": "最后一手",
   "More": "更多",
-  "Section": "分区"
+  "Section": "分区",
+  "Passport": "护照",
+  "Climbing passport": "攀岩护照",
+  "Earn a state's stamp with your first climb there. Pick the state when you log a climb.": "在一个州第一次攀爬即可获得该州的印章。记录攀爬时请选择州。",
+  "States stamped": "已集印章的州",
+  "{count} of {total}": "{count} / {total}",
+  "Map of the 50 states with your stamped states in colour": "50 个州的地图，已集印章的州以彩色显示",
+  "No stamps yet. Log a climb with its state to earn your first one.": "还没有印章。记录攀爬时选择州，即可获得第一枚印章。",
+  "Latest stamp: {state}": "最新印章：{state}",
+  "Your stamps": "你的印章",
+  "State": "州",
+  "Not set": "未设置",
+  "Your first climb in a state earns its stamp in Progress > Passport.": "在一个州的第一次攀爬会在“进步 > 护照”中获得印章。",
+  "New state stamp: {state}! See it in Progress > Passport.": "新的州印章：{state}！在“进步 > 护照”中查看。",
+  "Climbing in {state}": "在{state}攀岩"
 }

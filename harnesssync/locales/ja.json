@@ -372,5 +372,19 @@
   "Past the crux": "核心の先",
   "Last move": "最後の一手",
   "More": "その他",
-  "Section": "セクション"
+  "Section": "セクション",
+  "Passport": "パスポート",
+  "Climbing passport": "クライミングパスポート",
+  "Earn a state's stamp with your first climb there. Pick the state when you log a climb.": "その州で初めて登ると、州のスタンプがもらえます。記録するときに州を選んでください。",
+  "States stamped": "スタンプを集めた州",
+  "{count} of {total}": "{total}州中{count}",
+  "Map of the 50 states with your stamped states in colour": "スタンプを集めた州が色付きで表示される50州の地図",
+  "No stamps yet. Log a climb with its state to earn your first one.": "まだスタンプはありません。州を選んで登りを記録すると最初のスタンプがもらえます。",
+  "Latest stamp: {state}": "最新のスタンプ：{state}",
+  "Your stamps": "あなたのスタンプ",
+  "State": "州",
+  "Not set": "未設定",
+  "Your first climb in a state earns its stamp in Progress > Passport.": "州で初めて登ると、進捗 > パスポートにスタンプが追加されます。",
+  "New state stamp: {state}! See it in Progress > Passport.": "新しい州のスタンプ：{state}！進捗 > パスポートで見られます。",
+  "Climbing in {state}": "{state}で登っています"
 }
