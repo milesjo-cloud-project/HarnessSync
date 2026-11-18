@@ -464,3 +464,45 @@ def test_local_sqlite_fallback_stays_quiet(monkeypatch, caplog):
     with caplog.at_level("WARNING", logger="harnesssync.db_store"):
         db_store._database_url()
     assert "erased on every redeploy" not in caplog.text
+
+
+NEON_A = "postgresql://climber:secret-a@ep-a.us-east-2.aws.neon.tech/harnesssync?sslmode=require"
+NEON_B = "postgres://climber:secret-b@ep-b.us-east-2.aws.neon.tech/neondb?sslmode=require"
+
+
+def test_secrets_and_env_pointing_at_different_databases_logs_a_warning(monkeypatch, caplog):
+    monkeypatch.setattr(db_store, "_secrets_database_url", lambda: NEON_A)
+    monkeypatch.setenv("DATABASE_URL", NEON_B)
+    with caplog.at_level("WARNING", logger="harnesssync.db_store"):
+        url = db_store._database_url()
+    assert url == NEON_A  # the secrets file still wins, so nothing switches silently
+    assert "point at different databases" in caplog.text
+    assert "ep-a.us-east-2.aws.neon.tech" in caplog.text and "ep-b.us-east-2.aws.neon.tech" in caplog.text
+    assert "secret-a" not in caplog.text and "secret-b" not in caplog.text
+
+
+def test_same_database_in_both_places_stays_quiet(monkeypatch, caplog):
+    monkeypatch.setattr(db_store, "_secrets_database_url", lambda: NEON_A)
+    monkeypatch.setenv("DATABASE_URL", NEON_A.replace("postgresql://", "postgres://"))
+    with caplog.at_level("WARNING", logger="harnesssync.db_store"):
+        db_store._database_url()
+    assert "point at different databases" not in caplog.text
+
+
+def test_announce_database_names_host_and_source_without_credentials(monkeypatch, capsys):
+    monkeypatch.setattr(db_store, "_secrets_database_url", lambda: None)
+    monkeypatch.setenv("DATABASE_URL", NEON_A)
+    message = db_store.announce_database()
+    assert message == (
+        "HarnessSync database: postgresql database 'harnesssync' on "
+        "ep-a.us-east-2.aws.neon.tech (from DATABASE_URL)."
+    )
+    printed = capsys.readouterr().out
+    assert "ep-a.us-east-2.aws.neon.tech" in printed
+    assert "secret-a" not in printed and "climber" not in printed
+
+
+def test_announce_database_reports_the_secrets_file_as_the_source(monkeypatch):
+    monkeypatch.setattr(db_store, "_secrets_database_url", lambda: NEON_B)
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    assert "(from the secrets file's [database] url)" in db_store.announce_database()

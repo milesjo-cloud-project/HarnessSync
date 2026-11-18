@@ -11,8 +11,10 @@ redeploy, so a deployed app must point at a hosted database. Set it in
     [database]
     url = "postgresql://user:password@host/dbname?sslmode=require"
 
-or via the DATABASE_URL environment variable. With neither set, data goes to
-climber_profiles/harnesssync.db.
+or via the DATABASE_URL environment variable. If both are set, the secrets
+file wins (and a warning is logged when they disagree). With neither set,
+data goes to climber_profiles/harnesssync.db. Each start prints one
+"HarnessSync database: ..." line saying which one is in use.
 """
 
 import logging
@@ -239,13 +241,50 @@ _engine = None
 HOSTED_ENV_MARKERS = ("RENDER", "STREAMLIT_SHARING_MODE")
 
 
-def _database_url():
+def _secrets_database_url():
     try:
         import streamlit as st
-        url = st.secrets.get("database", {}).get("url")
+        return st.secrets.get("database", {}).get("url")
     except Exception:
-        url = None
-    url = url or os.environ.get("DATABASE_URL")
+        return None
+
+
+def _target(url):
+    """(driver, host, port, database) of a URL, or None if it can't be parsed."""
+    try:
+        u = sa.engine.make_url(_normalize_url(url))
+    except Exception:
+        return None
+    return (u.get_backend_name(), u.host, u.port, u.database)
+
+
+def describe_url(url):
+    """Where a database URL points, safe to log: driver, host and database name.
+    Never the user name or password."""
+    target = _target(url)
+    if target is None:
+        return "an unreadable database URL"
+    backend, host, _port, database = target
+    if backend == "sqlite":
+        return f"a local SQLite file ({database})"
+    return f"{backend} database '{database}' on {host}"
+
+
+def _database_url():
+    """The secrets file's [database] url wins over the DATABASE_URL environment
+    variable. That order is kept so a deploy never silently switches databases,
+    but a mismatch between the two is logged, since it otherwise looks like the
+    app "isn't saving" to whichever one you are watching."""
+    secrets_url = _secrets_database_url()
+    env_url = os.environ.get("DATABASE_URL")
+    if secrets_url and env_url and _target(secrets_url) != _target(env_url):
+        logging.getLogger(__name__).warning(
+            "The secrets file's [database] url and DATABASE_URL point at different "
+            "databases. HarnessSync uses the secrets file's: %s. DATABASE_URL (%s) is "
+            "ignored. Remove one of them so they can't disagree.",
+            describe_url(secrets_url), describe_url(env_url),
+        )
+    url = secrets_url or env_url
     if url:
         return url
     if any(os.environ.get(name) for name in HOSTED_ENV_MARKERS):
@@ -257,6 +296,25 @@ def _database_url():
         )
     os.makedirs(PROFILES_DIR, exist_ok=True)
     return f"sqlite:///{DEFAULT_SQLITE_PATH}"
+
+
+def announce_database():
+    """Print, at start-up, which database this process will use and where that
+    setting came from, without connecting and without any credentials. Tables are
+    only created on first use, so an empty database alone can't tell you whether
+    the app is pointed at it."""
+    try:
+        if _secrets_database_url():
+            source = "the secrets file's [database] url"
+        elif os.environ.get("DATABASE_URL"):
+            source = "DATABASE_URL"
+        else:
+            source = "no database setting"
+        message = f"HarnessSync database: {describe_url(_database_url())} (from {source})."
+    except Exception as exc:  # never let a log line stop the app starting
+        message = f"HarnessSync database: couldn't read the setting ({type(exc).__name__})."
+    print(message, flush=True)
+    return message
 
 
 def _normalize_url(url):
