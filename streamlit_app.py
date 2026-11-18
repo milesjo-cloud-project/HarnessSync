@@ -4,7 +4,7 @@ from harnesssync.ui.language import tr
 from harnesssync.ui.language import current_language, render_language_selector, english_notice
 
 from harnesssync.profile_manager import get_profile, save_profile, set_language, display_name_taken, DISPLAY_NAME_MAX
-from harnesssync.ui import dashboard, feedback, guide, gym_reports, leaderboard, log_climb, phone_app, projects, sidebar
+from harnesssync.ui import dashboard, feedback, guide, gym_reports, leaderboard, log_climb, phone_app, projects, rate_app, sidebar
 from harnesssync.ui.common import auth_configured, dev_mode, email_is_verified, render_safely, show_flash, password_auth_enabled
 from harnesssync.support_config import HELP_URL
 from harnesssync.ui.landing_redirect import send_new_visitors_to_landing
@@ -108,6 +108,7 @@ def render_page():
     # Four tabs fit a phone screen without scrolling. The everyday three come
     # first; everything else sits under More.
     more_sections = [
+        ("⭐ How's HarnessSync?", "How's HarnessSync?", rate_app.render, (user_id,)),
         ("🏆 Leaderboard", "Leaderboard", leaderboard.render, ()),
         ("📱 Phone App", "Phone App", phone_app.render, (user_id,)),
         ("💬 Help & report a problem", "Help", feedback.render, (user_id, display_name)),
