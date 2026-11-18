@@ -25,7 +25,7 @@ def temporary_database(tmp_path, monkeypatch):
     db_store.get_engine().dispose()
 
 
-def _app(auth=None, from_site=False):
+def _app(auth=None, from_site=False, gym=None):
     app = AppTest.from_file(APP_PATH, default_timeout=30)
     app.secrets["auth"] = auth or {}
     app.secrets["email"] = {}
@@ -33,6 +33,8 @@ def _app(auth=None, from_site=False):
     app.user = {"is_logged_in": False}
     if from_site:
         app.query_params["from"] = "site"
+    if gym:
+        app.query_params["gym"] = gym
     app.run()
     assert not app.exception
     return app
@@ -90,3 +92,16 @@ def test_returning_browser_redirect_keeps_visitor_in_the_app():
     script = landing_redirect._REDIRECT
     assert 'url.searchParams.set("from", "site")' in script
     assert script.index("localStorage.getItem") < script.index(SITE_URL)
+
+
+def test_gym_flyer_link_goes_straight_to_sign_in_with_the_gym_name(password_mode):
+    from unittest import mock
+    from harnesssync import gym_report
+    with mock.patch("harnesssync.support_config.settings", return_value={"owner_emails": ["owner@example.com"]}):
+        slug = gym_report.add_gym("owner@example.com", "Basalt Bouldering")
+    app = _app(gym=slug)
+    assert not _redirected(app)
+    assert any(w.label == "Email" for w in app.text_input)
+    assert any("Basalt Bouldering climbers" in i.value for i in app.info)
+    # A made-up gym doesn't skip the landing page.
+    assert _redirected(_app(gym="no-such-gym"))

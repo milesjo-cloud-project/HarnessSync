@@ -15,6 +15,7 @@ or via the DATABASE_URL environment variable. With neither set, data goes to
 climber_profiles/harnesssync.db.
 """
 
+import logging
 import os
 from contextlib import contextmanager
 
@@ -184,7 +185,39 @@ password_accounts = sa.Table(
     sa.Column("locked_until", sa.BigInteger, nullable=False, server_default="0"),
 )
 
+# Gyms that run a HarnessSync pilot. Added by the owner only; climbers pick one.
+gyms = sa.Table(
+    "gyms", metadata,
+    sa.Column("slug", sa.String(40), primary_key=True),
+    sa.Column("name", sa.String(80), nullable=False),
+    sa.Column("created_at", sa.String(32), nullable=False),
+)
+
+# A row here is a climber's opt-in: their gym climbs, logged on or after
+# joined_on, count toward that gym's anonymous monthly wall report.
+# One gym per climber. Deleting the row is how a climber opts out.
+gym_members = sa.Table(
+    "gym_members", metadata,
+    sa.Column("user_id", sa.String(320), primary_key=True),
+    sa.Column("gym_slug", sa.String(40), nullable=False, index=True),
+    sa.Column("joined_on", sa.String(10), nullable=False),  # YYYY-MM-DD
+)
+
+# One row per try on a project, with how high it got. projects.attempts stays
+# the total (it also counts tries typed in as a number); this keeps the detail.
+project_tries = sa.Table(
+    "project_tries", metadata,
+    sa.Column("id", sa.Integer, primary_key=True, autoincrement=True),
+    sa.Column("user_id", sa.String(320), nullable=False, index=True),
+    sa.Column("project_id", sa.Integer, nullable=False, index=True),
+    sa.Column("date", sa.String(10), nullable=False),
+    sa.Column("high_point", sa.String(20), nullable=False, server_default=""),
+)
+
 _engine = None
+
+# Set by hosts whose disk is wiped on redeploy (Render, and Streamlit Community Cloud).
+HOSTED_ENV_MARKERS = ("RENDER", "STREAMLIT_SHARING_MODE")
 
 
 def _database_url():
@@ -196,6 +229,13 @@ def _database_url():
     url = url or os.environ.get("DATABASE_URL")
     if url:
         return url
+    if any(os.environ.get(name) for name in HOSTED_ENV_MARKERS):
+        # Hosted containers lose their disk on every redeploy or restart, so
+        # this fallback silently throws away every climber's log. Say so loudly.
+        logging.getLogger(__name__).warning(
+            "No DATABASE_URL or [database] url is set, so HarnessSync is using a local "
+            "SQLite file. On a hosted service it is erased on every redeploy or restart."
+        )
     os.makedirs(PROFILES_DIR, exist_ok=True)
     return f"sqlite:///{DEFAULT_SQLITE_PATH}"
 

@@ -446,3 +446,21 @@ class TestHarnessSync(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_hosted_sqlite_fallback_logs_a_data_loss_warning(monkeypatch, caplog):
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.setenv("RENDER", "true")
+    with caplog.at_level("WARNING", logger="harnesssync.db_store"):
+        url = db_store._database_url()
+    assert url.startswith("sqlite:///")
+    assert "erased on every redeploy" in caplog.text
+
+
+def test_local_sqlite_fallback_stays_quiet(monkeypatch, caplog):
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    for name in db_store.HOSTED_ENV_MARKERS:
+        monkeypatch.delenv(name, raising=False)
+    with caplog.at_level("WARNING", logger="harnesssync.db_store"):
+        db_store._database_url()
+    assert "erased on every redeploy" not in caplog.text

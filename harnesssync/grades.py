@@ -28,6 +28,8 @@ SEND_STATUSES = ["Onsight", "Flash", "Redpoint", "Sent", "Project", "Attempt"]
 # that count toward best grades, personal records, pyramids and the leaderboard.
 SENT_STATUSES = ["Onsight", "Flash", "Redpoint", "Sent"]
 PROJECT_STATUSES = ["Project", "Attempt"]
+# How far up a try got, lowest first. Saved with every try on a project.
+HIGH_POINTS = ["First moves", "Halfway", "Past the crux", "Last move"]
 ENVIRONMENTS = ["Gym", "Outdoor"]
 WALL_ANGLES = ["Slab", "Vertical", "Overhang", "Roof"]
 HOLD_TYPES = ["Crimps", "Slopers", "Jugs", "Pinches", "Pockets", "Mixed"]

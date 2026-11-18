@@ -9,7 +9,8 @@ from harnesssync.profile_manager import (
     start_session_timer, active_session_start, end_session_timer,
     DISPLAY_NAME_MAX, MAX_SESSION_MIN,
 )
-from harnesssync.ui.common import auth_configured, user_now, user_tz, flash, leaderboard_changed, password_auth_enabled
+from harnesssync.ui import gym_reports
+from harnesssync.ui.common import auth_configured, user_now, user_tz, flash, leaderboard_changed, password_auth_enabled, render_safely
 
 
 def render_account(user_id, profile):
@@ -30,6 +31,7 @@ def render_account(user_id, profile):
                     leaderboard_changed()
                     flash("success", tr("Profile updated."))
                     st.rerun()
+        render_safely("Gym report", gym_reports.render_member, user_id)
         if auth_configured():
             st.button(tr("Log out"), on_click=st.logout, width="stretch")
         elif password_auth_enabled():

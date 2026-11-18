@@ -41,7 +41,10 @@ const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
   });
   page.on("pageerror", error => errors.push(error.message));
   await page.goto(`http://127.0.0.1:${port}/`);
-  await page.getByRole("tab", {name: "📱 Phone App", exact: true}).click();
+  // Phone App sits under More since the app was cut to four tabs.
+  await page.getByRole("tab", {name: "☰ More", exact: true}).click();
+  // Streamlit draws the option's emoji as a separate icon, so click its words.
+  await page.getByText("Phone App", {exact: true}).click();
   await page.getByRole("button", {name: "Connect this device for offline use", exact: true}).click();
   const connection = await page.getByRole("link", {name: "Open offline log on this device", exact: true}).getAttribute("href");
   assert.ok(connection.startsWith(url), "Connection must point at this server’s offline page");
@@ -203,7 +206,7 @@ const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 })().catch(async error => {
   console.error(error);
   if (page) {
-    console.error(await page.evaluate(async () => ({visibility: document.visibilityState,
+    console.error(await page.evaluate(async () => typeof syncing === "undefined" ? {page: location.href} : ({visibility: document.visibilityState,
       syncing, displayedLanguage: hsLanguage, selectedLanguage: hsSelector.value,
       snapshotLanguage: (await readLocal()).state?.snapshot.language,
       pendingLanguage: (await readLocal()).state?.languagePending})));

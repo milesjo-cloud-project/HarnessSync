@@ -2,9 +2,9 @@
 streamlit[auth]>=1.65,<2
 pandas>=2.2,<4
 pillow>=10.1,<13
+segno>=1.6,<2
 altair>=5,<7
 sqlalchemy>=2.0,<3
 psycopg[binary]>=3.2,<4
 tzdata
 starlette>=1.0,<2
-segno>=1.6,<2

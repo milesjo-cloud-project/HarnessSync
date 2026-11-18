@@ -7,6 +7,8 @@ from harnesssync.ui.language import render_language_selector
 from harnesssync import password_auth
 from harnesssync.support_config import HELP_URL
 from harnesssync.ui.landing_redirect import send_new_visitors_to_landing
+from harnesssync.ui import gym_reports
+from harnesssync.ui.common import render_safely
 
 
 def resolve_user():
@@ -20,6 +22,7 @@ def resolve_user():
     render_language_selector()
     st.title("🧗 HarnessSync")
     st.subheader(tr("A simple log for every gym session"))
+    render_safely("Gym", gym_reports.render_sign_in_banner)
     st.write(tr("Sign in to your private climbing log."))
     st.caption(tr("Previously used Google? Set a password using the same email to keep your climbs."))
     with st.form("password_sign_in", clear_on_submit=True):

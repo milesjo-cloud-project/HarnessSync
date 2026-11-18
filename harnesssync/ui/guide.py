@@ -68,7 +68,7 @@ def render():
         - **Crash reports:** we store error types, code locations and occurrence counts without exception
           messages or account identifiers. Include the incident reference when reporting a failure.
         - **Phone app waitlist:** if you join, we store which phone you use and your answers, and email you
-          about the app. Leave any time from the 📱 Phone App tab.
+          about the app. Leave any time from ☰ More → 📱 Phone App.
         - **Offline devices:** connected browsers store a downloaded log, queued entries and a 30-day
           access token. Revoke device access in Phone App; remove downloaded data on the device separately.
         - **Your control:** hide yourself from the leaderboard, download your climbs, projects and sessions
