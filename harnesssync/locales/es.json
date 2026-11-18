@@ -384,5 +384,19 @@
   "Past the crux": "Pasado el crux",
   "Last move": "Último movimiento",
   "More": "Más",
-  "Section": "Sección"
+  "Section": "Sección",
+  "Passport": "Pasaporte",
+  "Climbing passport": "Pasaporte de escalada",
+  "Earn a state's stamp with your first climb there. Pick the state when you log a climb.": "Gana el sello de un estado con tu primera escalada allí. Elige el estado al registrar una escalada.",
+  "States stamped": "Estados sellados",
+  "{count} of {total}": "{count} de {total}",
+  "Map of the 50 states with your stamped states in colour": "Mapa de los 50 estados con tus estados sellados en color",
+  "No stamps yet. Log a climb with its state to earn your first one.": "Aún no tienes sellos. Registra una escalada con su estado para ganar el primero.",
+  "Latest stamp: {state}": "Último sello: {state}",
+  "Your stamps": "Tus sellos",
+  "State": "Estado",
+  "Not set": "Sin elegir",
+  "Your first climb in a state earns its stamp in Progress > Passport.": "Tu primera escalada en un estado gana su sello en Progreso > Pasaporte.",
+  "New state stamp: {state}! See it in Progress > Passport.": "¡Nuevo sello de estado: {state}! Míralo en Progreso > Pasaporte.",
+  "Climbing in {state}": "Escalando en {state}"
 }

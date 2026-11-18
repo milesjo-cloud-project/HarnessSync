@@ -30,6 +30,7 @@ import sqlalchemy as sa
 
 from harnesssync.db_store import get_db, rows, climbs, gyms, gym_members
 from harnesssync.grades import GRADES_BY_DISCIPLINE, SENT_STATUSES, PROJECT_STATUSES, grade_rank
+from harnesssync.states import normalize_state
 from harnesssync.support_config import require_owner
 
 MIN_CLIMBERS = 3
@@ -44,8 +45,9 @@ def slugify(name):
     return slug[:40].strip("-")
 
 
-def add_gym(actor, name):
-    """Owner only. Returns the new gym's slug."""
+def add_gym(actor, name, state=""):
+    """Owner only. Returns the new gym's slug. state is the gym's two-letter
+    US state, so climbs logged from its flyer start in that state."""
     require_owner(actor)
     name = re.sub(r"\s+", " ", name or "").strip()[:GYM_NAME_MAX]
     slug = slugify(name)
@@ -55,14 +57,22 @@ def add_gym(actor, name):
         if conn.execute(sa.select(gyms.c.slug).where(gyms.c.slug == slug)).first():
             raise ValueError("That gym is already on the list.")
         conn.execute(gyms.insert().values(
-            slug=slug, name=name, created_at=datetime.now(timezone.utc).isoformat(timespec="seconds")))
+            slug=slug, name=name, state=normalize_state(state),
+            created_at=datetime.now(timezone.utc).isoformat(timespec="seconds")))
     return slug
 
 
 def list_gyms():
     """Gym names and slugs only, for the climber's picker."""
     with get_db() as conn:
-        return rows(conn.execute(sa.select(gyms.c.slug, gyms.c.name).order_by(gyms.c.name)))
+        return rows(conn.execute(sa.select(gyms.c.slug, gyms.c.name, gyms.c.state).order_by(gyms.c.name)))
+
+
+def set_gym_state(actor, slug, state):
+    """Owner only. Sets or fixes a pilot gym's state (gyms added before states existed have none)."""
+    require_owner(actor)
+    with get_db() as conn:
+        conn.execute(gyms.update().where(gyms.c.slug == slug).values(state=normalize_state(state)))
 
 
 def get_gym(slug):

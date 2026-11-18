@@ -22,6 +22,14 @@ def option_label():
     return partial(translate, language=current_language())
 
 
+def state_option_label():
+    """For state pickers: "Utah (UT)", or "Not set" in the climber's language.
+    Bound at render time for the same reason as option_label."""
+    from harnesssync.states import state_label
+    language = current_language()
+    return lambda code: state_label(code) or translate("Not set", language)
+
+
 def localized_frame(frame):
     """Translate presentation columns and enums, never free text or exports."""
     frame = frame.copy()

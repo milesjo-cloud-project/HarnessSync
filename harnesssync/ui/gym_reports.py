@@ -6,6 +6,7 @@ import streamlit as st
 from harnesssync.ui.language import tr
 
 from harnesssync import gym_flyer, gym_report
+from harnesssync.states import STATE_CODES, state_label
 from harnesssync.ui.common import flash, user_now
 
 
@@ -101,9 +102,11 @@ def render_owner(actor):
     with st.form("add_gym_form", clear_on_submit=True):
         name = st.text_input("Add a pilot gym", max_chars=gym_report.GYM_NAME_MAX,
                              placeholder="e.g. The Rock Gym, Rexburg")
+        state = st.selectbox("State", [""] + list(STATE_CODES), format_func=lambda c: state_label(c) or "Not set",
+                             key="add_gym_state")
         if st.form_submit_button("Add gym"):
             try:
-                gym_report.add_gym(actor, name)
+                gym_report.add_gym(actor, name, state)
             except ValueError as error:
                 st.warning(str(error))
             else:
@@ -116,6 +119,16 @@ def render_owner(actor):
         return
     names = {g["slug"]: g["name"] for g in gyms}
     slug = st.selectbox("Gym", list(names), format_func=names.get, key="gym_report_gym")
+    states = {g["slug"]: g.get("state") or "" for g in gyms}
+    with st.form(f"gym_state_form_{slug}"):
+        options = [""] + list(STATE_CODES)
+        picked = st.selectbox("Gym's state", options, index=options.index(states[slug]) if states[slug] in options else 0,
+                              format_func=lambda c: state_label(c) or "Not set",
+                              help="Climbers who scan this gym's flyer start logging in this state.")
+        if st.form_submit_button("Save state"):
+            gym_report.set_gym_state(actor, slug, picked)
+            flash("success", f"Saved {names[slug]}'s state.")
+            st.rerun()
 
     link = gym_flyer.flyer_link(slug)
     st.caption("Flyer link. It opens the app on Log with this gym's name and asks climbers "

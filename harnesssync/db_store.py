@@ -56,6 +56,8 @@ climbs = sa.Table(
     sa.Column("angle", sa.String(20), nullable=False, default="Vertical"),
     sa.Column("hold_type", sa.String(20), nullable=False, default="Mixed"),
     sa.Column("notes", sa.Text, nullable=False, default=""),
+    # Two-letter US state code ("UT"), or "" when not given. Earns state stamps.
+    sa.Column("state", sa.String(2), nullable=False, server_default=""),
 )
 
 projects = sa.Table(
@@ -72,6 +74,7 @@ projects = sa.Table(
     sa.Column("hold_type", sa.String(20), nullable=False, default="Mixed"),
     sa.Column("attempts", sa.Integer, nullable=False, default=1),
     sa.Column("notes", sa.Text, nullable=False, default=""),
+    sa.Column("state", sa.String(2), nullable=False, server_default=""),
 )
 
 goals = sa.Table(
@@ -191,6 +194,8 @@ gyms = sa.Table(
     sa.Column("slug", sa.String(40), primary_key=True),
     sa.Column("name", sa.String(80), nullable=False),
     sa.Column("created_at", sa.String(32), nullable=False),
+    # Where the gym is, so climbs logged from its flyer start in the right state.
+    sa.Column("state", sa.String(2), nullable=False, server_default=""),
 )
 
 # A row here is a climber's opt-in: their gym climbs, logged on or after
@@ -308,6 +313,9 @@ def _add_missing_columns(engine):
         ("feedback", "updated_at", "VARCHAR(32) NOT NULL DEFAULT ''"),
         ("feedback", "incident_ref", "VARCHAR(40) NOT NULL DEFAULT ''"),
         ("feedback", "ai_consent", "BOOLEAN NOT NULL DEFAULT FALSE"),
+        ("climbs", "state", "VARCHAR(2) NOT NULL DEFAULT ''"),
+        ("projects", "state", "VARCHAR(2) NOT NULL DEFAULT ''"),
+        ("gyms", "state", "VARCHAR(2) NOT NULL DEFAULT ''"),
     ]
     for table, column, ddl in additions:
         if table not in tables:
