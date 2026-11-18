@@ -219,6 +219,20 @@ project_tries = sa.Table(
     sa.Column("high_point", sa.String(20), nullable=False, server_default=""),
 )
 
+# Answers to the "How's HarnessSync?" survey under More: a 1-5 rating, an
+# optional comment and an optional gym name. Separate from `feedback`, which
+# holds private support tickets. A new table, so create_all adds it on start-up
+# without touching existing data.
+app_ratings = sa.Table(
+    "app_ratings", metadata,
+    sa.Column("id", sa.Integer, primary_key=True, autoincrement=True),
+    sa.Column("user_id", sa.String(320), nullable=False, index=True),
+    sa.Column("submitted_at", sa.String(32), nullable=False),  # UTC ISO timestamp
+    sa.Column("rating", sa.Integer, nullable=False),
+    sa.Column("comment", sa.Text, nullable=False, server_default=""),
+    sa.Column("gym", sa.String(80), nullable=False, server_default=""),
+)
+
 _engine = None
 
 # Set by hosts whose disk is wiped on redeploy (Render, and Streamlit Community Cloud).
