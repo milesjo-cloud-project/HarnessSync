@@ -4,7 +4,10 @@ from pathlib import Path
 
 import streamlit as st
 
+from harnesssync.db_store import announce_database
 from harnesssync.offline_routes import routes
 
 os.environ["HARNESSSYNC_OFFLINE_ENABLED"] = "1"
+# One line in the logs per start: which database, and from which setting.
+announce_database()
 app = st.App(str(Path(__file__).with_name("streamlit_app.py")), routes=routes)
