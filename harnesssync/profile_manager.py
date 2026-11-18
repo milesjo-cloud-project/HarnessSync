@@ -11,6 +11,7 @@ from datetime import datetime, timedelta, timezone
 import sqlalchemy as sa
 
 from harnesssync.grades import grade_rank, SENT_STATUSES, GRADES_BY_DISCIPLINE, HIGH_POINTS
+from harnesssync.states import normalize_state
 from harnesssync.db_store import (get_db, rows, profiles, climbs, projects, sessions,
                                  feedback, waitlist, support_locks, notification_outbox, offline_devices, offline_receipts, password_accounts,
                                  project_tries)
@@ -161,21 +162,21 @@ def _best_send_rank(conn, user_id, discipline):
 
 
 def log_climb(user_id, discipline, grade, status, climb_date, route_name="", location="",
-              environment="Gym", angle="Vertical", hold_type="Mixed", notes=""):
+              environment="Gym", angle="Vertical", hold_type="Mixed", notes="", state=""):
     """Appends one logged climb. Returns PR alert strings if it's a new best send."""
     with get_db() as conn:
         return _log_climb(conn, user_id, discipline, grade, status, climb_date,
-                          route_name, location, environment, angle, hold_type, notes)
+                          route_name, location, environment, angle, hold_type, notes, state)
 
 
 def _log_climb(conn, user_id, discipline, grade, status, climb_date, route_name="", location="",
-               environment="Gym", angle="Vertical", hold_type="Mixed", notes=""):
+               environment="Gym", angle="Vertical", hold_type="Mixed", notes="", state=""):
     previous_best_rank = _best_send_rank(conn, user_id, discipline) if status in SENT_STATUSES else -1
     conn.execute(climbs.insert().values(
         user_id=user_id, date=climb_date, discipline=discipline, grade=grade, status=status,
         route_name=_clean(route_name, ROUTE_MAX), location=_clean(location, LOCATION_MAX),
         environment=environment, angle=angle, hold_type=hold_type,
-        notes=(notes or "").strip()[:NOTES_MAX],
+        notes=(notes or "").strip()[:NOTES_MAX], state=normalize_state(state),
     ))
 
     if status in SENT_STATUSES and grade_rank(discipline, grade) > previous_best_rank:
@@ -184,17 +185,21 @@ def _log_climb(conn, user_id, discipline, grade, status, climb_date, route_name=
 
 
 def update_climb(user_id, climb_id, discipline, grade, status, climb_date, route_name="", location="",
-                 environment="Gym", angle="Vertical", hold_type="Mixed", notes=""):
+                 environment="Gym", angle="Vertical", hold_type="Mixed", notes="", state=None):
+    """state=None leaves the climb's state as it was."""
+    values = dict(
+        discipline=discipline, grade=grade, status=status, date=climb_date,
+        route_name=_clean(route_name, ROUTE_MAX), location=_clean(location, LOCATION_MAX),
+        environment=environment, angle=angle, hold_type=hold_type,
+        notes=(notes or "").strip()[:NOTES_MAX],
+    )
+    if state is not None:
+        values["state"] = normalize_state(state)
     with get_db() as conn:
         conn.execute(
             climbs.update()
             .where(climbs.c.id == climb_id, climbs.c.user_id == user_id)
-            .values(
-                discipline=discipline, grade=grade, status=status, date=climb_date,
-                route_name=_clean(route_name, ROUTE_MAX), location=_clean(location, LOCATION_MAX),
-                environment=environment, angle=angle, hold_type=hold_type,
-                notes=(notes or "").strip()[:NOTES_MAX],
-            )
+            .values(**values)
         )
 
 
@@ -203,10 +208,38 @@ def delete_climb(user_id, climb_id):
         conn.execute(climbs.delete().where(climbs.c.id == climb_id, climbs.c.user_id == user_id))
 
 
+def climbed_in_state(user_id, state):
+    """True once the climber has any climb or project in that state, so the
+    Log screen can celebrate only the first one (the stamp)."""
+    state = normalize_state(state)
+    if not user_id or not state:
+        return False
+    with get_db() as conn:
+        for table in (climbs, projects):
+            if conn.execute(sa.select(table.c.id).where(
+                    table.c.user_id == user_id, table.c.state == state).limit(1)).first():
+                return True
+    return False
+
+
+def get_state_history(user_id):
+    """(state, date) for each of the climber's climbs and projects with a state.
+    Only the two columns the passport needs, scoped to this account."""
+    if not user_id:
+        return []
+    with get_db() as conn:
+        found = []
+        for table in (climbs, projects):
+            found += rows(conn.execute(
+                sa.select(table.c.state, table.c.date)
+                .where(table.c.user_id == user_id, table.c.state != "")))
+    return found
+
+
 # ----------------- PROJECTS -----------------
 def log_project(user_id, discipline, grade, project_date, route_name="", location="",
                 environment="Gym", angle="Vertical", hold_type="Mixed", attempts=1, notes="",
-                high_point=None):
+                high_point=None, state=""):
     """Adds a project. If the climber already has a project with the same
     discipline, grade and route name, adds the attempts to it instead of
     creating a duplicate. Unnamed projects match on location instead, so
@@ -216,7 +249,7 @@ def log_project(user_id, discipline, grade, project_date, route_name="", locatio
     Returns "added" or "bumped"."""
     with get_db() as conn:
         result, project_id = _log_project_with_id(conn, user_id, discipline, grade, project_date, route_name,
-                                                  location, environment, angle, hold_type, attempts, notes)
+                                                  location, environment, angle, hold_type, attempts, notes, state)
         if high_point is not None:
             _record_try(conn, user_id, project_id, project_date, high_point)
         return result
@@ -239,7 +272,7 @@ def _log_project(conn, *args, **kwargs):
 
 
 def _log_project_with_id(conn, user_id, discipline, grade, project_date, route_name="", location="",
-                         environment="Gym", angle="Vertical", hold_type="Mixed", attempts=1, notes=""):
+                         environment="Gym", angle="Vertical", hold_type="Mixed", attempts=1, notes="", state=""):
     route_name = _clean(route_name, ROUTE_MAX)
     location = _clean(location, LOCATION_MAX)
     same_project = [
@@ -251,17 +284,19 @@ def _log_project_with_id(conn, user_id, discipline, grade, project_date, route_n
     if not route_name:
         same_project.append(sa.func.lower(projects.c.location) == location.lower())
     existing = conn.execute(sa.select(projects.c.id).where(*same_project)).first()
+    state = normalize_state(state)
     if existing:
-        conn.execute(
-            projects.update().where(projects.c.id == existing.id)
-            .values(attempts=projects.c.attempts + attempts)
-        )
+        bump = {"attempts": projects.c.attempts + attempts}
+        if state:
+            # A project first logged without a state picks one up from a later try.
+            bump["state"] = sa.case((projects.c.state == "", state), else_=projects.c.state)
+        conn.execute(projects.update().where(projects.c.id == existing.id).values(**bump))
         return "bumped", existing.id
     inserted = conn.execute(projects.insert().values(
         user_id=user_id, date=project_date, discipline=discipline, grade=grade,
         route_name=route_name, location=location,
         environment=environment, angle=angle, hold_type=hold_type,
-        attempts=attempts, notes=(notes or "").strip()[:NOTES_MAX],
+        attempts=attempts, notes=(notes or "").strip()[:NOTES_MAX], state=state,
     ))
     return "added", inserted.inserted_primary_key[0]
 
@@ -289,17 +324,21 @@ def get_projects(user_id):
 
 
 def update_project(user_id, project_id, discipline, grade, project_date, route_name="", location="",
-                   environment="Gym", angle="Vertical", hold_type="Mixed", attempts=1, notes=""):
+                   environment="Gym", angle="Vertical", hold_type="Mixed", attempts=1, notes="", state=None):
+    """state=None leaves the project's state as it was."""
+    values = dict(
+        discipline=discipline, grade=grade, date=project_date,
+        route_name=_clean(route_name, ROUTE_MAX), location=_clean(location, LOCATION_MAX),
+        environment=environment, angle=angle, hold_type=hold_type,
+        attempts=max(1, int(attempts)), notes=(notes or "").strip()[:NOTES_MAX],
+    )
+    if state is not None:
+        values["state"] = normalize_state(state)
     with get_db() as conn:
         conn.execute(
             projects.update()
             .where(projects.c.id == project_id, projects.c.user_id == user_id)
-            .values(
-                discipline=discipline, grade=grade, date=project_date,
-                route_name=_clean(route_name, ROUTE_MAX), location=_clean(location, LOCATION_MAX),
-                environment=environment, angle=angle, hold_type=hold_type,
-                attempts=max(1, int(attempts)), notes=(notes or "").strip()[:NOTES_MAX],
-            )
+            .values(**values)
         )
 
 
@@ -343,7 +382,7 @@ def graduate_project(user_id, project_id, send_date, send_status="Redpoint"):
         # and a failed insert restores the project.
         conn.execute(climbs.insert().values(**{
             key: p[key] for key in ("user_id", "discipline", "grade", "route_name",
-                                   "location", "environment", "angle", "hold_type", "notes")
+                                   "location", "environment", "angle", "hold_type", "notes", "state")
         }, date=send_date, status=send_status))
         if grade_rank(p["discipline"], p["grade"]) > previous_best_rank:
             return [f"🏆 New {p['discipline']} personal best: {p['grade']}!"]

@@ -372,5 +372,19 @@
   "Past the crux": "크럭스 이후",
   "Last move": "마지막 동작",
   "More": "더보기",
-  "Section": "섹션"
+  "Section": "섹션",
+  "Passport": "여권",
+  "Climbing passport": "클라이밍 여권",
+  "Earn a state's stamp with your first climb there. Pick the state when you log a climb.": "그 주에서 처음 등반하면 주 스탬프를 받아요. 등반을 기록할 때 주를 선택하세요.",
+  "States stamped": "스탬프를 모은 주",
+  "{count} of {total}": "{total}개 중 {count}개",
+  "Map of the 50 states with your stamped states in colour": "스탬프를 모은 주가 색으로 표시된 50개 주 지도",
+  "No stamps yet. Log a climb with its state to earn your first one.": "아직 스탬프가 없어요. 주를 선택해 등반을 기록하면 첫 스탬프를 받아요.",
+  "Latest stamp: {state}": "최근 스탬프: {state}",
+  "Your stamps": "내 스탬프",
+  "State": "주",
+  "Not set": "선택 안 함",
+  "Your first climb in a state earns its stamp in Progress > Passport.": "주에서 처음 등반하면 진행 상황 > 여권에 스탬프가 생겨요.",
+  "New state stamp: {state}! See it in Progress > Passport.": "새 주 스탬프: {state}! 진행 상황 > 여권에서 확인하세요.",
+  "Climbing in {state}": "{state}에서 등반 중"
 }

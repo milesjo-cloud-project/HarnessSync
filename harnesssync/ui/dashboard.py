@@ -4,7 +4,7 @@ from datetime import datetime
 
 import streamlit as st
 
-from harnesssync.ui.language import option_label, tr, localized_frame
+from harnesssync.ui.language import option_label, state_option_label, tr, localized_frame
 import pandas as pd
 import altair as alt
 
@@ -14,8 +14,10 @@ from harnesssync.grades import (
 from harnesssync.profile_manager import (
     get_climbs, best_send, get_sessions, delete_climb, update_climb, ROUTE_MAX, LOCATION_MAX, NOTES_MAX,
 )
+from harnesssync.states import STATE_CODES, state_label
 from harnesssync.ui.common import user_now, flash, leaderboard_changed
 from harnesssync.ui.achievements import render as render_achievements
+from harnesssync.ui import passport
 from harnesssync.ui.progress import render_goals, render_recaps
 
 
@@ -28,9 +30,12 @@ def render(user_id):
     today_str = user_now().date().isoformat()
 
     view = st.segmented_control(
-        tr("Progress view"), ["Overview", "Personal goals", "Session recaps", "Achievements"],
+        tr("Progress view"), ["Overview", "Passport", "Personal goals", "Session recaps", "Achievements"],
         default="Overview", selection_mode="single", format_func=option_label(), key="progress_view",
     )
+    if view == "Passport":
+        passport.render(user_id, user_now().date())
+        return
     if view == "Personal goals":
         render_goals(user_id, climbs, user_now().date())
         return
@@ -162,6 +167,12 @@ def render(user_id):
                         edit_hold = st.selectbox(tr("Hold Type"), HOLD_TYPES, index=HOLD_TYPES.index(target_climb["hold_type"]) if target_climb["hold_type"] in HOLD_TYPES else 5, key=f"edit_hold_{k}", format_func=option_label())
                         edit_route = st.text_input(tr("Route / Problem Name"), value=target_climb["route_name"], key=f"edit_route_{k}", max_chars=ROUTE_MAX)
                         edit_loc = st.text_input(tr("Location"), value=target_climb["location"], key=f"edit_loc_{k}", max_chars=LOCATION_MAX)
+                        state_options = [""] + list(STATE_CODES)
+                        current_state = target_climb.get("state") or ""
+                        edit_state = st.selectbox(
+                            tr("State"), state_options,
+                            index=state_options.index(current_state) if current_state in state_options else 0,
+                            format_func=state_option_label(), key=f"edit_state_{k}")
                         edit_notes = st.text_area(tr("Notes / Beta"), value=target_climb.get("notes", ""), key=f"edit_notes_{k}", max_chars=NOTES_MAX)
                         try:
                             default_d = datetime.strptime(target_climb["date"], "%Y-%m-%d").date()
@@ -178,6 +189,7 @@ def render(user_id):
                                 user_id, target_climb["id"], edit_disc, edit_grade, edit_status, edit_date.isoformat(),
                                 route_name=edit_route, location=edit_loc,
                                 environment=edit_env, angle=edit_angle, hold_type=edit_hold, notes=edit_notes,
+                                state=edit_state,
                             )
                             leaderboard_changed()
                             flash("success", tr("Climb record updated!"))
