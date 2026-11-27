@@ -29,6 +29,14 @@ the last check before it. Follow `AGENTS.md`. The format of past reviews is in
    `git fetch origin`, then `git log --oneline origin/main..<branch>` and
    `git diff --stat origin/main...<branch>`. Note whether the branch is behind
    `main`. PRs are squash-merged, so stale branches can conflict.
+   - **Check whether it's already merged.** Squash merges leave the branch's own
+     commits looking unmerged, and the three-dot diff still shows its changes.
+     Also run `git diff --stat origin/main <branch>` (two dots, comparing the
+     actual files). If that's empty, the branch's content is already on `main`:
+     report it as already merged, name the matching `main` commit
+     (`git log --oneline -5 origin/main`), and review it only if the owner asks.
+     If the two-dot diff isn't empty but includes files the branch never touched,
+     that's just newer work on `main`. Review only the three-dot diff.
 2. **Read the whole diff,** plus enough surrounding code to understand it.
 3. **Check the AGENTS.md rules:**
    - **Privacy:** every new or changed query on private data is filtered by the
