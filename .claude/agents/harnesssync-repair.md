@@ -27,15 +27,39 @@ three jobs are **bug repair**, **test gaps**, and **translation gaps**. Follow
   to the signed-in user. Owner-only operations call `require_owner`
   (`harnesssync/support_config.py`). Never infer ownership from a display name.
 
-## Before any job: branch
+## Before any job: branch in a separate worktree
 
-Work in `~/HarnessSync`. Check `git status` first. If there are uncommitted
-changes you didn't make, stop and report them; don't stash or discard them.
-Create a branch from an up-to-date `main`
-(`git fetch origin && git switch -c <branch> origin/main`). Name it `fix/<slug>`
-for repairs, `test/<slug>` for test gaps, or `i18n/<slug>` for translations.
-If the fetch fails because no credentials are available, branch from local
-`main` and say so.
+The owner's checkout at `~/HarnessSync` may be on a branch they're using. Don't
+switch branches, stash, or commit there. Do all work in a new git worktree:
+
+```
+git -C ~/HarnessSync fetch origin
+git -C ~/HarnessSync worktree add -b <branch> ~/HarnessSync-worktrees/<branch> origin/main
+```
+
+Name the branch `fix/<slug>` for repairs, `test/<slug>` for test gaps, or
+`i18n/<slug>` for translations. Run every edit, test, and commit inside that
+worktree. If the fetch fails because no credentials are available, use local
+`main` as the base and say so. The project venv at `~/HarnessSync/.venv` works
+from the worktree, because `pytest.ini` puts the current folder on the import
+path.
+
+## Test databases
+
+`tests/conftest.py` only blanks secrets and unsets `DATABASE_URL` and the email
+variables. **It does not create a database.** If a test touches the database
+without configuring one, `db_store` falls back to `climber_profiles/harnesssync.db`
+in the repo, which can be the owner's real local data.
+
+- Every test that reads or writes data must point `db_store` at a file in
+  `tmp_path` first. Copy the fixture pattern in `tests/test_app_ratings.py`:
+  `db_store.configure(f"sqlite:///{(tmp_path / 'name.db').as_posix()}")`, then
+  `db_store.get_engine().dispose()` on teardown. Many test files already have
+  a fixture like this; reuse it instead of adding another.
+- A fresh worktree has no `climber_profiles/harnesssync.db`. If that file
+  exists after you run the tests, a test used the default database. Find and
+  fix that test before you continue. An empty `climber_profiles/` folder is
+  normal, because working out the default path creates it.
 
 ## Job 1: Bug repair
 
@@ -44,8 +68,8 @@ If the fetch fails because no credentials are available, branch from local
    `ui/progress.py` uses `progress_manager.py`). `app.py` and `streamlit_app.py`
    wire tabs and identity together.
 2. **Reproduce.** Write a failing test first, in the matching `tests/test_*.py`
-   file. Use the fixtures in `tests/conftest.py`, which provide a temporary
-   SQLite database and blank secrets. Use Streamlit `AppTest` for UI behavior.
+   file, with a temporary database as described under **Test databases**. Use
+   Streamlit `AppTest` for UI behavior.
    Confirm that the test fails for the reported reason.
    - If you can't reproduce the bug, stop. Don't guess at a fix. Report what you
      tried and which details are missing.
@@ -61,7 +85,8 @@ Use this when asked to add tests, or to find under-tested code.
    Rank them by risk: privacy scoping, `require_owner` checks, migrations, and
    data writes come first.
 2. **Write tests only.** Add tests that check behavior, not implementation
-   details, using fictional data and the `conftest.py` fixtures. Don't change
+   details, using fictional data and a temporary database (see **Test
+   databases**). Don't change
    app code in this job.
 3. **If a new test exposes a real bug,** don't fix it in the same branch. Mark the
    test `@pytest.mark.xfail(reason="...", strict=True)` and list it in your
@@ -81,7 +106,8 @@ needs no catalog, and a missing key falls back to English.
    characters exactly as they appear in the English text. Never translate user
    content, stored enum values, or anything passed in as a format value.
 3. **Don't delete stale keys** unless you're asked to. List them in your handoff.
-4. **Rebuild generated files.** Run `python scripts/build_offline_locales.py`
+4. **Rebuild generated files.** Run
+   `~/HarnessSync/.venv/bin/python scripts/build_offline_locales.py`
    after any catalog change. If new card text adds characters the bundled font
    lacks, `test_bundled_font_has_glyphs_for_translated_card_copy` fails. In that
    case, report that `scripts/build_card_font.py` needs to be run with the
@@ -95,11 +121,15 @@ needs no catalog, and a missing key falls back to English.
    `~/HarnessSync/.venv/bin/python -m pytest`. Everything must pass, apart from
    any `xfail` tests you added on purpose. If you changed files under
    `scripts/` or anything that feeds the demo downloads, also run
-   `scripts/build_demo_downloads.py` and include the regenerated files.
-2. Run `git diff --check`.
+   `~/HarnessSync/.venv/bin/python scripts/build_demo_downloads.py` and include
+   the regenerated files.
+2. Check that `climber_profiles/harnesssync.db` doesn't exist in the worktree,
+   and run `git diff --check`.
 3. Commit on the feature branch with a clear message. Don't include databases,
    `climber_profiles/`, secrets, logs, or real report text. Check
    `git diff --cached --stat` before you commit.
+4. Remove the worktree (`git -C ~/HarnessSync worktree remove ~/HarnessSync-worktrees/<branch>`).
+   The branch and its commit stay in the repository for the owner to push.
 
 ## Never do these
 
